@@ -1,0 +1,2068 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<title>Mesozoic</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0e1217; --panel:#151b23; --panel2:#1b232d; --plot:#10151b;
+  --border:#2a3441; --border2:#3b4858;
+  --text:#d9dfe7; --muted:#8693a4;
+  --line:#5cc8d7; --sand:#d9a441; --hl:#ff9b54; --err:#ff8f8f;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:14px/1.45 "IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px 40px}
+header{padding:22px 0 14px;margin-bottom:16px;border-bottom:2px solid var(--border2)}
+h1{font-size:22px;font-weight:600;letter-spacing:.01em;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0}
+.layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:860px){.layout{grid-template-columns:minmax(0,1fr)} main.stack{order:-1}}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:2px;overflow:hidden}
+.card h2{font-size:13px;font-weight:600;color:var(--text);margin:0;padding:9px 12px;
+  background:var(--panel2);border-bottom:1px solid var(--border2)}
+.body{padding:12px}
+.grp{font-size:12px;font-weight:600;color:var(--text);margin:0 0 10px}
+.sep{border-top:1px solid var(--border);margin:14px -12px 12px}
+.field{margin-bottom:11px}
+.field>label{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--muted);margin-bottom:5px}
+.field>label output{color:var(--text);font-variant-numeric:tabular-nums}
+input[type=text],input[type=number],select,textarea{
+  width:100%;background:var(--plot);color:var(--text);border:1px solid var(--border2);
+  border-radius:2px;padding:7px 9px;font:inherit;font-size:13px}
+textarea{font-family:ui-monospace,Menlo,Consolas,"Courier New",monospace;font-size:12px;height:190px;resize:vertical;white-space:pre;overflow:auto;line-height:1.5}
+input:focus,select:focus,textarea:focus{outline:1px solid var(--line);outline-offset:0;border-color:var(--line)}
+input[type=range]{width:100%;accent-color:var(--line);margin:0}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.btn{background:var(--panel2);color:var(--text);border:1px solid var(--border2);border-radius:2px;
+  padding:6px 11px;font:inherit;font-size:12.5px;cursor:pointer}
+.btn:hover{border-color:var(--line)}
+.hint{font-size:11.5px;color:var(--muted);margin-top:6px}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:7px 10px}
+.checks label{display:flex;gap:7px;align-items:center;font-size:13px;color:var(--text);cursor:pointer}
+.checks input{accent-color:var(--line);margin:0}
+.tabs{display:flex;flex-wrap:wrap;background:var(--panel);border-bottom:1px solid var(--border2)}
+.tab{flex:1 1 0;min-width:120px;padding:10px 10px 9px;background:transparent;color:var(--muted);
+  border:0;border-right:1px solid var(--border);border-bottom:2px solid transparent;margin-bottom:-1px;
+  font:inherit;font-size:13px;cursor:pointer;text-align:center}
+.tab:last-child{border-right:0}
+.tab:hover{color:var(--text)}
+.tab:focus-visible{outline:1px solid var(--line);outline-offset:-2px}
+.tab[aria-pressed="true"]{color:var(--text);background:var(--panel2);border-bottom-color:var(--line);font-weight:600}
+@media (max-width:520px){.tab{flex:1 1 50%;border-bottom:1px solid var(--border)}.tab[aria-pressed="true"]{border-bottom-color:var(--line);border-bottom-width:2px}}
+#mapwrap{position:relative;background:var(--panel)}
+canvas{display:block;width:100%;touch-action:pan-y;cursor:crosshair}
+.status{font-size:12.5px;padding:8px 12px;border-top:1px solid var(--border);font-variant-numeric:tabular-nums;color:var(--muted)}
+.status.readout{background:var(--panel2);border-top:1px solid var(--border2);color:var(--text);min-height:36px}
+.status .err{color:var(--err)}
+[hidden]{display:none!important}
+.togglebtn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;margin-top:10px;
+  background:var(--panel2);color:var(--text);border:1px solid var(--border2);border-radius:2px;padding:8px 10px;
+  font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.togglebtn:hover{border-color:var(--line)}
+.togglebtn:focus-visible{outline:1px solid var(--line)}
+.togglebtn .cnt{font-weight:400;color:var(--muted);font-size:12px;margin-left:auto;margin-right:6px;font-variant-numeric:tabular-nums}
+.togglebtn .chev{color:var(--muted)}
+#dataBox{margin-top:10px}
+.wdl{display:grid;grid-template-columns:auto 1fr;margin:0 0 4px;border:1px solid var(--border);border-radius:2px;font-size:12.5px;font-variant-numeric:tabular-nums}
+.wdl dt,.wdl dd{margin:0;padding:4px 10px;border-bottom:1px solid var(--border)}
+.wdl dt{color:var(--muted)}
+.wdl dd{text-align:right;color:var(--text)}
+.wdl .wh{grid-column:1/-1;background:var(--panel2);color:var(--text);font-weight:600;padding:5px 10px;border-bottom:1px solid var(--border2)}
+.wdl .wn{grid-column:1/-1;color:var(--err);padding:5px 10px;border-bottom:1px solid var(--border)}
+.wdl>:nth-last-child(-n+2):not(.wh):not(.wn){border-bottom:0}
+.stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+.stack>.yearbar{border:1px solid var(--border);border-radius:2px}
+.bubbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;padding:9px 12px;border-bottom:1px solid var(--border);background:var(--panel);font-size:12.5px;color:var(--muted)}
+.bubbar label{display:flex;align-items:center;gap:8px}
+.bubbar select{width:auto;padding:4px 8px}
+.bubbar .chk{color:var(--text);cursor:pointer}
+.bubbar input[type=checkbox]{accent-color:var(--line);margin:0}
+#bwrap{position:relative;background:var(--panel)}
+#bcv{cursor:crosshair}
+.timeline{padding:10px 12px 8px;border-bottom:1px solid var(--border);background:var(--panel)}
+.tl-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.play{width:36px;padding:5px 0;text-align:center;line-height:1.2}
+.tl-date{font-weight:600;font-size:15px;min-width:132px}
+.tl-field{color:var(--muted);font-size:12.5px;flex:1;min-width:170px;font-variant-numeric:tabular-nums}
+.tl-speed{font-size:12.5px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.tl-speed select{width:auto;padding:4px 6px}
+#tl{height:76px;cursor:ew-resize;touch-action:pan-y;border:1px solid var(--border);border-radius:2px;background:var(--plot)}
+#tl:focus-visible{outline:1px solid var(--line)}
+.yearbar{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--border);background:var(--panel);font-size:12.5px;color:var(--muted)}
+.yearbar>label{white-space:nowrap}
+.yearbar input[type=range]{flex:1;min-width:80px;accent-color:var(--line);margin:0}
+.yearbar output{color:var(--text);font-weight:600;min-width:56px;font-variant-numeric:tabular-nums}
+.yearbar .yr-cnt{margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums}
+@media (max-width:620px){.yearbar{flex-wrap:wrap}.yearbar .yr-cnt{margin-left:0;flex-basis:100%}}
+#secwrap{position:relative;background:var(--panel)}
+.sechint{padding:8px 12px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--border);line-height:1.45}
+.btn.on{border-color:var(--hl);color:var(--hl)}
+.bubbar input[type=number]{width:92px;padding:3px 6px;font-size:12px}
+.owcrow{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px;color:var(--text)}
+.owcrow label{display:flex;align-items:center;gap:7px;min-width:78px;cursor:pointer}
+.owcrow input[type=checkbox]{accent-color:var(--line);margin:0}
+.owcrow input[type=number]{width:96px;padding:5px 8px;font-size:13px}
+.owcrow span{color:var(--muted);font-size:12.5px}
+.fhint{flex-basis:100%;font-size:12px;color:var(--hl);line-height:1.4}
+.fdel{margin-left:auto;background:transparent;border:0;color:var(--muted);cursor:pointer;font:inherit;font-size:13px;padding:0 4px}
+.fdel:hover{color:var(--err)}
+.checks label.frow{grid-column:1/-1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Картопостроение</h1>
+    <p class="sub">Карты по скважинным данным · глубина, пористость, проницаемость, нефтенасыщенность, добыча, обводнённость</p>
+  </header>
+
+  <div class="layout">
+    <aside class="card">
+      <h2>Параметры</h2>
+      <div class="body">
+        <p class="grp">Скважины</p>
+        <div class="field"><label for="wellSel">Скважина <output id="wellCnt"></output></label>
+          <select id="wellSel" aria-label="Выбор скважины"></select></div>
+        <dl class="wdl" id="wellCard" hidden></dl>
+        <div class="btns">
+          <button class="btn" id="bSample" type="button">Пример</button>
+          <button class="btn" id="bFile" type="button">Загрузить файл</button>
+          <button class="btn" id="bClear" type="button">Очистить</button>
+          <input type="file" id="file" accept=".txt,.csv,.tsv,.dat,text/plain" hidden>
+        </div>
+        <button class="togglebtn" id="dataToggle" type="button" aria-expanded="false" aria-controls="dataBox">
+          <span>Таблица данных</span><span class="cnt" id="dataCnt"></span><span class="chev" id="dataChev" aria-hidden="true">▸</span>
+        </button>
+        <div id="dataBox" hidden>
+          <textarea id="data" spellcheck="false" aria-label="Данные скважин"></textarea>
+          <div class="hint">Одна скважина в строке: X Y Z Кп Кпр Кн Альт Год Мел Юра Триас [имя]. Z — кровля пласта, Мел/Юра/Триас — глубины кровли горизонтов (м). Столбцы после Z необязательны, пропуск обозначайте «-» (например, скважина не вскрыла триас). Альтитуда в м, год бурения целым числом. Разделители: пробел, табуляция, запятая, «;».</div>
+        </div>
+
+        <div class="sep"></div>
+        <p class="grp">Добыча по месяцам</p>
+        <textarea id="prod" spellcheck="false" aria-label="Добыча по месяцам" style="height:150px"></textarea>
+        <div class="hint">Одна запись в строке: Дата Скважина Нефть Обводнённость. Дата ГГГГ-ММ, нефть в т/сут, обводнённость в %. Имя скважины должно совпадать с именем в данных скважин.</div>
+        <div class="btns">
+          <button class="btn" id="pSample" type="button">Пример</button>
+          <button class="btn" id="pFileBtn" type="button">Загрузить файл</button>
+          <button class="btn" id="pClear" type="button">Очистить</button>
+          <input type="file" id="pFile" accept=".txt,.csv,.tsv,.dat,text/plain" hidden>
+        </div>
+
+        <div class="sep"></div>
+        <p class="grp">Разломы</p>
+        <div class="checks" id="faultList" style="margin-bottom:10px" hidden></div>
+        <div class="btns" style="margin-top:0">
+          <button class="btn" id="fSample" type="button">Пример</button>
+          <button class="btn" id="fFileBtn" type="button">Загрузить файл</button>
+          <button class="btn" id="fClear" type="button">Очистить</button>
+          <input type="file" id="fFile" accept=".txt,.csv,.tsv,.dat,text/plain" hidden>
+        </div>
+        <button class="togglebtn" id="faultToggle" type="button" aria-expanded="false" aria-controls="faultBox">
+          <span>Таблица разломов</span><span class="cnt" id="faultCnt"></span><span class="chev" id="faultChev" aria-hidden="true">▸</span>
+        </button>
+        <div id="faultBox" hidden>
+          <textarea id="faults" spellcheck="false" aria-label="Разломы" style="height:150px"></textarea>
+          <div class="hint">Вершины линий разломов по порядку: X Y Имя. Одинаковое имя — одна линия разлома. Минимум две вершины на разлом.</div>
+        </div>
+
+        <div class="sep"></div>
+        <p class="grp">Залежи и ВНК</p>
+        <div class="owcrow"><label><input type="checkbox" id="poolJr" checked>Юра</label><span>ВНК</span>
+          <input type="number" id="owcJr" value="-855" step="5" aria-label="ВНК юры, абсолютная отметка"><span>м</span></div>
+        <div class="owcrow"><label><input type="checkbox" id="poolTr" checked>Триас</label><span>ВНК</span>
+          <input type="number" id="owcTr" value="-1560" step="5" aria-label="ВНК триаса, абсолютная отметка"><span>м</span></div>
+        <div class="hint">ВНК задаётся абсолютной отметкой (м, ниже уровня моря со знаком «−»). Контур залежи — линия, где кровля горизонта пересекает плоскость ВНК: нефть там, где кровля выше ВНК. Залежь показывается на всех картах контуром, а на карте своего горизонта ещё и заливкой; на разрезе — заливкой и линией ВНК.</div>
+
+        <div class="sep"></div>
+        <p class="grp">Подписи</p>
+        <div class="field"><label for="title">Название карты</label>
+          <input type="text" id="title"></div>
+        <div class="row2">
+          <div class="field"><label for="zlab">Подпись шкалы</label><input type="text" id="zlab"></div>
+          <div class="field"><label for="unit">Единицы XY</label><input type="text" id="unit" value="м"></div>
+        </div>
+
+        <div class="sep"></div>
+        <p class="grp">Интерполяция</p>
+        <div class="field"><label for="method">Метод</label>
+          <select id="method">
+            <option value="idw">Обратные расстояния (IDW)</option>
+            <option value="rbf">Радиальные функции (thin-plate)</option>
+          </select></div>
+        <div class="checks" style="grid-template-columns:1fr;margin-bottom:11px">
+          <label title="Скважины по другую сторону разлома не влияют на значения в узле. Работает для структурных карт и метода IDW"><input type="checkbox" id="fbar" checked>Разломы как барьеры (IDW)</label>
+        </div>
+        <div class="field" id="rowP"><label for="p">Степень p <output id="oP">2</output></label>
+          <input type="range" id="p" min="1" max="6" step="0.5" value="2"></div>
+        <div class="field" id="rowS" hidden><label for="smooth">Сглаживание <output id="oS">0.10</output></label>
+          <input type="range" id="smooth" min="0" max="1" step="0.05" value="0.1"></div>
+        <div class="row2">
+          <div class="field"><label for="res">Сетка</label>
+            <select id="res"><option value="60">60 ячеек</option><option value="100" selected>100 ячеек</option><option value="160">160 ячеек</option></select></div>
+          <div class="field"><label for="interval">Интервал изолиний</label>
+            <input type="number" id="interval" placeholder="авто" step="any" min="0"></div>
+        </div>
+        <div class="field"><label for="mask">Обрезка от скважин <output id="oM">45%</output></label>
+          <input type="range" id="mask" min="10" max="100" step="5" value="45"></div>
+
+        <div class="sep"></div>
+        <p class="grp">Оформление</p>
+        <div class="field"><label for="ramp">Палитра</label>
+          <select id="ramp">
+            <option value="teal">Бирюзово-жёлтая</option>
+            <option value="spectral">Спектр</option>
+            <option value="oil">Нефть (синий — охра — рыжий)</option>
+            <option value="water">Вода (песочный — синий)</option>
+            <option value="gray">Серая</option>
+          </select></div>
+        <div class="checks">
+          <label><input type="checkbox" id="fill" checked>Заливка</label>
+          <label><input type="checkbox" id="iso" checked>Изолинии</label>
+          <label><input type="checkbox" id="wells" checked>Скважины</label>
+          <label><input type="checkbox" id="labels" checked>Подписи</label>
+          <label><input type="checkbox" id="coord">Сетка координат</label>
+          <label title="Меньшее значение выше: сверху на шкале, светлым цветом"><input type="checkbox" id="depth" checked>Z — глубина</label>
+        </div>
+      </div>
+    </aside>
+
+    <main class="stack">
+      <div class="yearbar" id="yearbar" hidden>
+        <label for="yr">Год бурения</label>
+        <span id="yrMin"></span>
+        <input type="range" id="yr" min="0" max="1" step="1" value="1" aria-label="Год бурения скважин">
+        <span id="yrMax"></span>
+        <output id="yrOut" for="yr"></output>
+        <span class="yr-cnt" id="yrCnt"></span>
+      </div>
+
+      <section class="card">
+        <h2>Карта</h2>
+        <div class="tabs" id="tabs" role="group" aria-label="Показатель"></div>
+        <div class="bubbar" id="prodbar">
+          <label class="chk" title="Показать или скрыть залежи (контуры ВНК и заливку)"><input type="checkbox" id="poolsOn" checked><b style="font-weight:600">Залежи</b></label>
+          <label class="chk" title="Показать или скрыть разломы"><input type="checkbox" id="faultsOn" checked><b style="font-weight:600">Разломы</b></label>
+          <button class="btn" id="fDraw" type="button" style="padding:3px 10px;font-size:12px" title="Нарисовать новый разлом на карте курсором">Нарисовать разлом</button>
+          <span class="fhint" id="fHint" hidden></span>
+          <label id="horRow">Горизонт <select id="horizon" aria-label="Структурный горизонт"></select></label>
+          <label class="chk" title="Показать или скрыть данные добычи поверх карты"><input type="checkbox" id="ovOn" checked><b style="font-weight:600">Добыча на карте</b></label>
+          <label id="ovOpts">Размер пузыря
+            <select id="bmetric">
+              <option value="oil">Дебит нефти</option>
+              <option value="liq">Дебит жидкости</option>
+              <option value="cum">Накопленная добыча нефти</option>
+            </select></label>
+        </div>
+        <div class="timeline" id="timeline" hidden>
+          <div class="tl-top">
+            <button class="btn play" id="play" type="button" aria-label="Воспроизвести">▶</button>
+            <div class="tl-date" id="tlDate">—</div>
+            <div class="tl-field" id="tlField"></div>
+            <label class="tl-speed">Скорость
+              <select id="speed"><option value="700">1×</option><option value="350" selected>2×</option><option value="175">4×</option></select>
+            </label>
+          </div>
+          <canvas id="tl" tabindex="0" role="slider" aria-label="Шкала времени" aria-valuemin="0" aria-valuenow="0"></canvas>
+        </div>
+        <div id="mapwrap"><canvas id="cv"></canvas></div>
+        <div class="status" id="stats"></div>
+        <div class="status readout" id="readout">Наведите курсор на карту, чтобы увидеть координаты и значение</div>
+      </section>
+      <section class="card" id="secCard">
+        <h2>Геологический разрез</h2>
+        <div class="bubbar" id="secbar">
+          <button class="btn" id="secDraw" type="button">Нарисовать линию</button>
+          <button class="btn" id="secClear" type="button">Очистить</button>
+          <label>Буфер, <span id="secUnit">м</span> <input type="number" id="secBuf" value="1000" min="0" step="100" title="Скважины ближе этого расстояния к линии проецируются на разрез"></label>
+          <label>Толщина пласта, м <input type="number" id="secThk" value="8" min="0" step="1" title="Условная толщина песчаного пласта под его кровлей"></label>
+        </div>
+        <div class="sechint" id="secHint"></div>
+        <div id="secwrap"><canvas id="sc"></canvas></div>
+        <div class="status" id="secStats"></div>
+        <div class="status readout" id="secRead">Наведите курсор на разрез: расстояние, отметка, слой и скважины</div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const cssv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const FONT='"IBM Plex Sans",-apple-system,"Segoe UI",Roboto,Arial,sans-serif';
+const DEFAULT_READOUT='Наведите курсор на карту, чтобы увидеть координаты и значение';
+
+/* ---------- показатели ---------- */
+const PROPS=[
+  {id:'z',  group:'struct', idx:0,label:'Кровля пласта',name:'Кровля пласта', dec:1,log:false,ramp:'teal',    depth:true, title:'Структурная карта кровли песчаного пласта',zlab:'Глубина, м'},
+  {id:'kr', group:'struct', idx:6,label:'Кровля мела',  name:'Кровля мела',  dec:1,log:false,ramp:'teal',depth:true,title:'Структурная карта кровли мела',  zlab:'Глубина, м'},
+  {id:'jr', group:'struct', idx:7,label:'Кровля юры',   name:'Кровля юры',   dec:1,log:false,ramp:'teal',depth:true,title:'Структурная карта кровли юры',   zlab:'Глубина, м'},
+  {id:'tr', group:'struct', idx:8,label:'Кровля триаса',name:'Кровля триаса',dec:1,log:false,ramp:'teal',depth:true,title:'Структурная карта кровли триаса',zlab:'Глубина, м'},
+  {id:'por',idx:1,label:'Пористость',    name:'Пористость',     dec:1,log:false,ramp:'teal',    depth:false,title:'Карта пористости песчаного пласта',        zlab:'Пористость, %'},
+  {id:'perm',idx:2,label:'Проницаемость',name:'Проницаемость',  dec:1,log:true, ramp:'spectral',depth:false,title:'Карта проницаемости песчаного пласта',     zlab:'Проницаемость, мД'},
+  {id:'so', idx:3,label:'Нефтенасыщенность',name:'Нефтенасыщенность',dec:1,log:false,ramp:'oil', depth:false,title:'Карта нефтенасыщенности песчаного пласта', zlab:'Нефтенасыщенность, %'},
+  {id:'alt',idx:4,label:'Альтитуда',name:'Альтитуда',dec:1,log:false,ramp:'teal',depth:false,title:'Карта альтитуд устьев скважин',zlab:'Альтитуда, м'},
+  {id:'qo', dyn:'oil',label:'Дебит нефти',name:'Дебит нефти',dec:1,log:false,ramp:'teal',    depth:false,title:'Карта дебитов нефти',            zlab:'Дебит нефти, т/сут',unit:'т/сут'},
+  {id:'qc', dyn:'cum',label:'Накопленная добыча',name:'Накопленная добыча',dec:1,log:false,ramp:'spectral',depth:false,title:'Карта накопленной добычи нефти',zlab:'Накопл. добыча, тыс. т',unit:'тыс. т'},
+  {id:'wc', dyn:'wc', label:'Обводнённость',name:'Обводнённость',dec:1,log:false,ramp:'water',   depth:false,title:'Карта обводнённости',            zlab:'Обводнённость, %',unit:'%'}
+];
+const cfg={}; PROPS.forEach(P=>{cfg[P.id]={title:P.title,zlab:P.zlab,ramp:P.ramp,interval:'',depth:P.depth};});
+let cur='z';
+const PROP=()=>PROPS.find(p=>p.id===cur);
+function saveCfg(){cfg[cur]={title:$('title').value,zlab:$('zlab').value,ramp:$('ramp').value,interval:$('interval').value,depth:$('depth').checked};}
+function loadCfg(){
+  const c=cfg[cur], P=PROP();
+  $('title').value=c.title; $('zlab').value=c.zlab; $('ramp').value=c.ramp;
+  $('interval').value=c.interval; $('depth').checked=c.depth;
+  $('interval').placeholder=P.log?'авто (1–2–5)':'авто';
+  $('interval').title=P.log?'Шаг в логарифмических единицах (lg)':'';
+}
+
+/* ---------- пример данных ---------- */
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const SAMPLE_FAULTS=[
+  {name:'F-1',down:1, throw:34,pts:[[4700,4800],[4350,3500],[4900,2000],[4500,250]]},
+  {name:'F-2',down:-1,throw:18,pts:[[1300,4100],[2100,2900],[1800,1300]]}
+];
+function faultThrow(x,y){
+  let t=0;
+  for(const f of SAMPLE_FAULTS){
+    let best=null;
+    for(let i=0;i<f.pts.length-1;i++){
+      const [x1,y1]=f.pts[i],[x2,y2]=f.pts[i+1], dx=x2-x1, dy=y2-y1, L2=dx*dx+dy*dy;
+      const tt=((x-x1)*dx+(y-y1)*dy)/L2, cl=Math.max(0,Math.min(1,tt));
+      const d=Math.hypot(x-(x1+cl*dx),y-(y1+cl*dy));
+      if(!best||d<best.d) best={d,tt,i,cross:dx*(y-y1)-dy*(x-x1)};
+    }
+    const last=f.pts.length-2;
+    const tip=(best.i===0&&best.tt<0)||(best.i===last&&best.tt>1);
+    if(!tip&&best.cross*f.down>0) t+=f.throw;
+  }
+  return t;
+}
+function sampleFaultText(){
+  const lines=['# X\tY\tРазлом'];
+  SAMPLE_FAULTS.forEach(f=>f.pts.forEach(p=>lines.push(p[0]+'\t'+p[1]+'\t'+f.name)));
+  return lines.join('\n');
+}
+function sampleWells(){
+  const r=rng(11), r2=rng(23), r4=rng(53), r5=rng(71), W=[{name:'DEMO-1',x:3300,y:2400,z:1008.0}];
+  let tries=0;
+  while(W.length<26&&tries<6000){
+    tries++;
+    const x=200+r()*6100, y=200+r()*4600;
+    if(W.some(p=>Math.hypot(p.x-x,p.y-y)<700)) continue;
+    const u=(x-3300)/2200, v=(y-2400)/1700;
+    const z=1008+62*(u*u+1.4*v*v)+6*(0.5+0.5*Math.sin(u*2.3+v*1.1))+(r()-.5)*3+faultThrow(x,y);
+    W.push({name:'W-'+String(W.length).padStart(2,'0'),x:Math.round(x),y:Math.round(y),z:Math.round(z*10)/10});
+  }
+  W.forEach((p,i)=>{
+    const u=(p.x-3300)/2200, v=(p.y-2400)/1700;
+    p.q=Math.exp(-(u*u+1.2*v*v)/1.4);
+    p.por=12+10.5*p.q+1.2*Math.sin(u*1.7-v*2.1)+(i?(r2()-.5)*1.4:0);
+    const lk=0.8+0.17*(p.por-12)+(i?(r2()-.5)*0.35:0);
+    p.perm=Math.pow(10,lk);
+    let so=84-0.28*(p.z-1008)+0.6*(p.por-17)+(i?(r2()-.5)*3:0);
+    p.so=Math.min(88,Math.max(15,so));
+    p.alt=Math.round((152+0.0035*(p.y-2500)+18*Math.sin(p.x/1500+0.5)*Math.cos(p.y/1800)+(i?(r4()-.5)*6:0))*10)/10;
+    p.year=i===0?2014:Math.min(2022,Math.max(2014,2014+Math.round(Math.min(8,Math.max(0,(p.z-1008)/22))+(r4()-.5)*2.4)));
+    // структурные горизонты: амплитуда структуры растёт с глубиной
+    const sh=p.z-1008, nz=()=>i?(r5()-.5)*6:0;
+    p.kr=585+0.6*sh+nz();     // кровля мела
+    p.jr=960+0.9*sh+nz();     // кровля юры
+    p.tr=1650+1.15*sh+nz();   // кровля триаса
+    p.noTr=(i%3===0&&i>0);    // часть скважин не вскрыла триас
+  });
+  return W;
+}
+function sampleText(){
+  const lines=['# X\tY\tZ, м\tКп, %\tКпр, мД\tКн, %\tАльт, м\tГод\tМел, м\tЮра, м\tТриас, м\tИмя'];
+  sampleWells().forEach((p,i)=>{
+    const permS=i===7?'-':(p.perm<10?p.perm.toFixed(2):p.perm.toFixed(1));
+    const soS=i===12?'-':p.so.toFixed(1);
+    lines.push([p.x,p.y,p.z.toFixed(1),p.por.toFixed(1),permS,soS,p.alt.toFixed(1),p.year,p.kr.toFixed(1),p.jr.toFixed(1),p.noTr?'-':p.tr.toFixed(1),p.name].join('\t'));
+  });
+  return lines.join('\n');
+}
+function sampleProdText(){
+  const r3=rng(37), W=sampleWells(), N=45; // 2023-01 … 2026-09
+  const lines=['# Дата\tСкважина\tНефть, т/сут\tОбводнённость, %'];
+  const sg=(t,t50,sw)=>1/(1+Math.exp(-(t-t50)/sw));
+  W.forEach((p,i)=>{
+    const start=i===0?0:Math.floor(r3()*21);
+    const oil0=12+95*p.q*(0.75+0.5*r3());
+    const wc0=Math.min(0.45,Math.max(0.02,0.02+0.22*(p.z-1008)/150+(r3()-.5)*0.03));
+    const t50=Math.max(10,42-0.13*(p.z-1008)+(r3()-.5)*8), sw=7, wcInf=0.96;
+    const L0=oil0/(1-wc0);
+    for(let m=start;m<N;m++){
+      if(i%9===4&&m>=20&&m<=22&&start<18) continue;
+      const t=m-start, s0=sg(0,t50,sw);
+      let wc=wc0+(wcInf-wc0)*(sg(t,t50,sw)-s0)/(1-s0)+(r3()-.5)*0.02;
+      wc=Math.min(0.985,Math.max(0.01,wc));
+      const L=L0*Math.exp(-t/80)*(1+(r3()-.5)*0.06);
+      const y=2023+Math.floor(m/12), mo=m%12+1;
+      lines.push(y+'-'+String(mo).padStart(2,'0')+'\t'+p.name+'\t'+(L*(1-wc)).toFixed(1)+'\t'+(wc*100).toFixed(1));
+    }
+  });
+  return lines.join('\n');
+}
+
+/* ---------- разбор данных ---------- */
+const MISSING=/^(-|na|n\/a|nan|null|нд|н\/д)$/i;
+const NUMLIKE=/^[+-]?[\d.,eE+-]+$/;
+function parse(text){
+  const raw=[]; let bad=0;
+  const num=s=>Number(String(s).replace(',','.'));
+  for(const ln of text.split(/\r?\n/)){
+    const line=ln.trim(); if(!line||line[0]==='#') continue;
+    let t;
+    if(/[;\t]/.test(line)) t=line.split(/[;\t]+/).map(s=>s.trim()).filter(Boolean);
+    else{
+      t=line.split(/\s+/).map(s=>s.replace(/,+$/,'')).filter(Boolean);
+      if(t.length<3) t=line.split(/[,\s]+/).filter(Boolean);
+    }
+    const x=num(t[0]),y=num(t[1]);
+    const zMissing=t[2]!==undefined&&MISSING.test(t[2]);
+    const z=zMissing?NaN:num(t[2]);
+    if(t.length>=3&&isFinite(x)&&isFinite(y)&&(isFinite(z)||zMissing)){
+      const vals=[z]; let i=3;
+      for(let k=0;k<8;k++){
+        const tk=t[i];
+        if(tk===undefined){vals.push(NaN);continue;}
+        if(MISSING.test(tk)){vals.push(NaN);i++;continue;}
+        if(NUMLIKE.test(tk)&&isFinite(num(tk))){vals.push(num(tk));i++;}
+        else vals.push(NaN);
+      }
+      raw.push({x,y,vals,name:t.slice(i).join(' ')});
+    }else if(!(raw.length===0&&!isFinite(x))){ bad++; }
+  }
+  const m=new Map();
+  for(const p of raw){
+    const k=p.x+'|'+p.y;
+    let q=m.get(k);
+    if(!q){q={x:p.x,y:p.y,sum:[0,0,0,0,0,0,0,0,0],cnt:[0,0,0,0,0,0,0,0,0],name:p.name};m.set(k,q);}
+    p.vals.forEach((v,j)=>{if(isFinite(v)){q.sum[j]+=v;q.cnt[j]++;}});
+    if(!q.name&&p.name) q.name=p.name;
+  }
+  const all=[...m.values()].map(q=>({x:q.x,y:q.y,name:q.name,key:(q.name||'').trim().toLowerCase(),vals:q.sum.map((s,j)=>q.cnt[j]?s/q.cnt[j]:NaN)}));
+  return {all,bad,merged:raw.length-all.length};
+}
+
+/* ---------- разломы ---------- */
+function applyFaultFilter(){
+  const names=new Set(S.faults.map(f=>f.name));
+  [...S.fOff].forEach(n=>{if(!names.has(n)) S.fOff.delete(n);});
+  S.faultsAct=S.faults.filter(f=>!S.fOff.has(f.name));
+  const segs=[], nm=[];
+  S.faultsAct.forEach(f=>{for(let i=0;i<f.pts.length-1;i++){segs.push(f.pts[i].x,f.pts[i].y,f.pts[i+1].x,f.pts[i+1].y);nm.push(f.name);}});
+  S.fsegs=segs; S.fnames=nm;
+}
+function fillFaultList(){
+  const box=$('faultList'); box.textContent='';
+  S.faults.forEach(f=>{
+    const lb=document.createElement('label'), cb=document.createElement('input');
+    cb.type='checkbox'; cb.checked=!S.fOff.has(f.name);
+    cb.addEventListener('change',()=>{
+      if(cb.checked) S.fOff.delete(f.name); else S.fOff.add(f.name);
+      applyFaultFilter(); fillFaultCnt(); rebuild();
+    });
+    lb.className='frow';
+    lb.appendChild(cb); lb.appendChild(document.createTextNode(f.name+' ('+f.pts.length+' верш.)'));
+    const del=document.createElement('button'); del.type='button'; del.className='fdel'; del.textContent='✕'; del.title='Удалить разлом «'+f.name+'»';
+    del.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();deleteFault(f.name);});
+    lb.appendChild(del);
+    box.appendChild(lb);
+  });
+  box.hidden=!S.faults.length;
+  fillFaultCnt();
+}
+function fillFaultCnt(){
+  $('faultCnt').textContent=S.faults.length?(S.faultsAct.length===S.faults.length?S.faults.length+' шт.':S.faultsAct.length+' из '+S.faults.length):'нет данных';
+}
+function parseFaults(text){
+  const by=new Map(); let bad=0;
+  const num=s=>Number(String(s).replace(',','.'));
+  for(const ln of text.split(/\r?\n/)){
+    const line=ln.trim(); if(!line||line[0]==='#') continue;
+    let t;
+    if(/[;\t]/.test(line)) t=line.split(/[;\t]+/).map(x=>x.trim()).filter(Boolean);
+    else{
+      t=line.split(/\s+/).map(x=>x.replace(/,+$/,'')).filter(Boolean);
+      if(t.length<2) t=line.split(/[,\s]+/).filter(Boolean);
+    }
+    const x=num(t[0]), y=num(t[1]);
+    if(t.length>=2&&isFinite(x)&&isFinite(y)){
+      const name=t.slice(2).join(' ')||'Разлом';
+      if(!by.has(name)) by.set(name,[]);
+      by.get(name).push({x,y});
+    }else if(!(by.size===0&&!isFinite(x))) bad++;
+  }
+  const faults=[]; 
+  by.forEach((pts,name)=>{ if(pts.length>=2) faults.push({name,pts}); else bad++; });
+  const segs=[], snames=[];
+  faults.forEach(f=>{for(let i=0;i<f.pts.length-1;i++){segs.push(f.pts[i].x,f.pts[i].y,f.pts[i+1].x,f.pts[i+1].y);snames.push(f.name);}});
+  return {faults,segs,snames,bad};
+}
+function segCross(ax,ay,bx,by,cx,cy,dx,dy){
+  const d1=(bx-ax)*(cy-ay)-(by-ay)*(cx-ax), d2=(bx-ax)*(dy-ay)-(by-ay)*(dx-ax);
+  if(d1*d2>=0) return false;
+  const d3=(dx-cx)*(ay-cy)-(dy-cy)*(ax-cx), d4=(dx-cx)*(by-cy)-(dy-cy)*(bx-cx);
+  return d3*d4<0;
+}
+
+/* ---------- добыча ---------- */
+const MONTHS=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+function ymKey(s){
+  let m=/^(\d{4})[-./](\d{1,2})/.exec(s); if(m&&+m[2]>=1&&+m[2]<=12) return +m[1]*12+(+m[2]-1);
+  m=/^(\d{1,2})[-./](\d{4})$/.exec(s); if(m&&+m[1]>=1&&+m[1]<=12) return +m[2]*12+(+m[1]-1);
+  m=/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/.exec(s); if(m&&+m[2]>=1&&+m[2]<=12) return +m[3]*12+(+m[2]-1);
+  return null;
+}
+function parseProd(text){
+  const rec=[]; let bad=0;
+  const num=s=>Number(String(s).replace(',','.'));
+  for(const ln of text.split(/\r?\n/)){
+    const line=ln.trim(); if(!line||line[0]==='#') continue;
+    let t;
+    if(/[;\t]/.test(line)) t=line.split(/[;\t]+/).map(s=>s.trim()).filter(Boolean);
+    else{
+      t=line.split(/\s+/).map(s=>s.replace(/,+$/,'')).filter(Boolean);
+      if(t.length<3) t=line.split(/[,\s]+/).filter(Boolean);
+    }
+    const k=t[0]!==undefined?ymKey(t[0]):null;
+    const oil=num(t[2]);
+    if(k!==null&&t[1]&&t.length>=3&&isFinite(oil)){
+      const wc=(t.length>3&&!MISSING.test(t[3])&&isFinite(num(t[3])))?num(t[3]):NaN;
+      rec.push({k,key:t[1].trim().toLowerCase(),oil,wc});
+    }else if(!(rec.length===0&&k===null)) bad++;
+  }
+  return {rec,bad};
+}
+function monthLabel(i){
+  if(!S.prod) return '—';
+  const k=S.prod.kmin+i; return MONTHS[((k%12)+12)%12]+' '+Math.floor(k/12);
+}
+function buildProd(pr){
+  S.prodBad=pr.bad; S.prodUnmatched=0;
+  if(!pr.rec.length){S.prod=null;S.field=null;S.dynRange=null;return;}
+  let kmin=Infinity,kmax=-Infinity;
+  pr.rec.forEach(r=>{if(r.k<kmin)kmin=r.k;if(r.k>kmax)kmax=r.k;});
+  const N=Math.min(600,kmax-kmin+1), by={};
+  pr.rec.forEach(r=>{
+    const i=r.k-kmin; if(i>=N) return;
+    let e=by[r.key];
+    if(!e){e={oil:new Float64Array(N).fill(NaN),wc:new Float64Array(N).fill(NaN),cum:new Float64Array(N).fill(NaN),cumL:new Float64Array(N).fill(NaN)};by[r.key]=e;}
+    e.oil[i]=r.oil; e.wc[i]=r.wc;
+  });
+  const keys=new Set(S.all.map(w=>w.key));
+  S.prodUnmatched=Object.keys(by).filter(k=>!keys.has(k)).length;
+  const F={oil:new Float64Array(N),liq:new Float64Array(N),cum:new Float64Array(N),wc:new Float64Array(N)}, liq=new Float64Array(N), oilw=new Float64Array(N);
+  const rng_={oil:[0,-Infinity],liq:[0,-Infinity],cum:[0,-Infinity],wc:[Infinity,-Infinity]};
+  for(const key in by){
+    const e=by[key]; let started=false,c=0,cl=0;
+    for(let i=0;i<N;i++){
+      if(isFinite(e.oil[i])) started=true;
+      if(started){
+        const k=kmin+i, d=new Date(Math.floor(k/12),(k%12)+1,0).getDate();
+        if(isFinite(e.oil[i])){
+          const wv=isFinite(e.wc[i])?Math.min(99.9,e.wc[i]):0;
+          c+=e.oil[i]*d/1000; cl+=e.oil[i]/(1-wv/100)*d/1000;
+        }
+        e.cum[i]=c; e.cumL[i]=cl;
+      }
+    }
+    if(!keys.has(key)) continue;
+    for(let i=0;i<N;i++){
+      if(isFinite(e.oil[i])){F.oil[i]+=e.oil[i]; rng_.oil[1]=Math.max(rng_.oil[1],e.oil[i]);
+        {const wv=isFinite(e.wc[i])?Math.min(99.9,e.wc[i]):0, lq=e.oil[i]/(1-wv/100); F.liq[i]+=lq; rng_.liq[1]=Math.max(rng_.liq[1],lq);}
+        if(isFinite(e.wc[i])&&e.wc[i]<99.9){liq[i]+=e.oil[i]/(1-e.wc[i]/100); oilw[i]+=e.oil[i];}}
+      if(isFinite(e.cum[i])){F.cum[i]+=e.cum[i]; rng_.cum[1]=Math.max(rng_.cum[1],e.cum[i]);}
+      if(isFinite(e.wc[i])){rng_.wc[0]=Math.min(rng_.wc[0],e.wc[i]); rng_.wc[1]=Math.max(rng_.wc[1],e.wc[i]);}
+    }
+  }
+  for(let i=0;i<N;i++) F.wc[i]=liq[i]>0?(1-oilw[i]/liq[i])*100:NaN;
+  S.prod={kmin,N,by}; S.field=F;
+  S.dynRange={};
+  for(const k in rng_) if(isFinite(rng_[k][0])&&isFinite(rng_[k][1])&&rng_[k][1]>rng_[k][0]) S.dynRange[k]=rng_[k];
+  if(S.ti<0||S.ti>=N) S.ti=N-1;
+}
+function getV(P,w){
+  if(P.dyn){const e=S.prod&&S.prod.by[w.key];return e?e[P.dyn][S.ti]:NaN;}
+  return w.vals[P.idx];
+}
+
+/* ---------- интерполяция ---------- */
+function solve(A,b){
+  const n=b.length;
+  for(let c=0;c<n;c++){
+    let piv=c,mx=Math.abs(A[c][c]);
+    for(let r=c+1;r<n;r++){const v=Math.abs(A[r][c]);if(v>mx){mx=v;piv=r;}}
+    if(mx<1e-13) throw new Error('singular');
+    if(piv!==c){const tr=A[c];A[c]=A[piv];A[piv]=tr;const tb=b[c];b[c]=b[piv];b[piv]=tb;}
+    for(let r=c+1;r<n;r++){
+      const f=A[r][c]/A[c][c]; if(f===0) continue;
+      for(let k=c;k<n;k++) A[r][k]-=f*A[c][k];
+      b[r]-=f*b[c];
+    }
+  }
+  const x=new Float64Array(n);
+  for(let r=n-1;r>=0;r--){
+    let s=b[r];
+    for(let k=r+1;k<n;k++) s-=A[r][k]*x[k];
+    x[r]=s/A[r][r];
+  }
+  return x;
+}
+function niceStep(range,target){
+  const raw=range/Math.max(1,target);
+  if(!(raw>0)) return 1;
+  const mag=Math.pow(10,Math.floor(Math.log10(raw))), f=raw/mag;
+  const nf=f<1.5?1:f<3.5?2:f<7.5?5:10;
+  return +(nf*mag).toPrecision(6);
+}
+function decimals(st){const s=String(+st.toPrecision(6));return s.includes('.')&&!s.includes('e')?s.split('.')[1].length:0;}
+
+function makeGrid(P,o,ext){
+  const n=P.length;
+  let xr=ext.xmax-ext.xmin, yr=ext.ymax-ext.ymin;
+  if(xr<=0) xr=yr||1; if(yr<=0) yr=xr||1;
+  const diag=Math.hypot(xr,yr);
+  const gx0=ext.xmin-xr*0.08, gx1=ext.xmax+xr*0.08, gy0=ext.ymin-yr*0.08, gy1=ext.ymax+yr*0.08;
+  const nx=o.res, dx=(gx1-gx0)/(nx-1);
+  const ny=Math.max(8,Math.min(400,Math.round((gy1-gy0)/dx)+1)), dy=(gy1-gy0)/(ny-1);
+  const z=new Float32Array(nx*ny);
+  let used=o.method, note='';
+
+  function idw(){
+    const pw=-o.p/2, eps=Math.pow(1e-9*diag,2), bar=!!o.barrier&&S.fsegs.length>0, fs=S.fsegs;
+    for(let j=0;j<ny;j++){const y=gy0+j*dy;
+      for(let i=0;i<nx;i++){const x=gx0+i*dx;
+        let sw=0,sz=0,swA=0,szA=0,hit=NaN;
+        for(let k=0;k<n;k++){
+          const ddx=x-P[k].x, ddy=y-P[k].y, d2=ddx*ddx+ddy*ddy;
+          if(d2<eps){hit=P[k].z;break;}
+          const w=Math.pow(d2,pw); swA+=w; szA+=w*P[k].z;
+          if(bar){
+            let blocked=false;
+            for(let q=0;q<fs.length;q+=4){ if(segCross(x,y,P[k].x,P[k].y,fs[q],fs[q+1],fs[q+2],fs[q+3])){blocked=true;break;} }
+            if(blocked) continue;
+          }
+          sw+=w; sz+=w*P[k].z;
+        }
+        z[j*nx+i]=isNaN(hit)?(sw>0?sz/sw:szA/swA):hit;
+      }}
+  }
+  function rbf(){
+    const xm=P.reduce((a,p)=>a+p.x,0)/n, ym=P.reduce((a,p)=>a+p.y,0)/n, sc=Math.max(xr,yr);
+    const zm=P.reduce((a,p)=>a+p.z,0)/n;
+    const zs=Math.sqrt(P.reduce((a,p)=>a+(p.z-zm)*(p.z-zm),0)/n)||1;
+    const X=P.map(p=>(p.x-xm)/sc), Y=P.map(p=>(p.y-ym)/sc), Z=P.map(p=>(p.z-zm)/zs);
+    const lam=o.smooth<=0?1e-10:Math.pow(10,-6+5.5*o.smooth);
+    const phi=r2=>r2>0?0.5*r2*Math.log(r2):0;
+    const m=n+3, A=[], b=new Float64Array(m);
+    for(let i=0;i<m;i++) A.push(new Float64Array(m));
+    for(let i=0;i<n;i++){
+      for(let j=0;j<n;j++){const a=X[i]-X[j],c=Y[i]-Y[j];A[i][j]=phi(a*a+c*c);}
+      A[i][i]+=lam;
+      A[i][n]=1;A[i][n+1]=X[i];A[i][n+2]=Y[i];
+      A[n][i]=1;A[n+1][i]=X[i];A[n+2][i]=Y[i];
+      b[i]=Z[i];
+    }
+    const w=solve(A,b);
+    for(let j=0;j<ny;j++){const y=(gy0+j*dy-ym)/sc;
+      for(let i=0;i<nx;i++){const x=(gx0+i*dx-xm)/sc;
+        let s=w[n]+w[n+1]*x+w[n+2]*y;
+        for(let k=0;k<n;k++){const a=x-X[k],c=y-Y[k];s+=w[k]*phi(a*a+c*c);}
+        z[j*nx+i]=s*zs+zm;
+      }}
+    for(let i=0;i<z.length;i++) if(!isFinite(z[i])) throw new Error('nan');
+  }
+  if(o.method==='rbf'&&o.barrier&&S.fsegs.length) note='RBF не учитывает разломы как барьеры: для этого выберите IDW.';
+  if(o.method==='rbf'){
+    try{rbf();}catch(e){used='idw';note='RBF не сработал (точки на одной прямой или вырожденная сетка), использован IDW.';idw();}
+  }else idw();
+
+  if(o.mask<100){
+    const lim=Math.pow(o.mask/100*diag,2);
+    for(let j=0;j<ny;j++){const y=gy0+j*dy;
+      for(let i=0;i<nx;i++){const x=gx0+i*dx;
+        let md=Infinity;
+        for(let k=0;k<n;k++){const a=x-P[k].x,c=y-P[k].y,d2=a*a+c*c;if(d2<md)md=d2;}
+        if(md>lim) z[j*nx+i]=NaN;
+      }}
+  }
+  let zmin=Infinity,zmax=-Infinity;
+  for(let i=0;i<z.length;i++){const v=z[i];if(v===v){if(v<zmin)zmin=v;if(v>zmax)zmax=v;}}
+  return {z,nx,ny,dx,dy,gx0,gx1,gy0,gy1,zmin,zmax,used,note,diag};
+}
+
+/* ---------- изолинии (marching squares) ---------- */
+function contour(g,L){
+  const {z,nx,ny,dx,dy,gx0,gy0}=g, out=[];
+  for(let j=0;j<ny-1;j++){
+    for(let i=0;i<nx-1;i++){
+      const v0=z[j*nx+i], v1=z[j*nx+i+1], v2=z[(j+1)*nx+i+1], v3=z[(j+1)*nx+i];
+      if(v0!==v0||v1!==v1||v2!==v2||v3!==v3) continue;
+      const idx=(v0>=L?1:0)|(v1>=L?2:0)|(v2>=L?4:0)|(v3>=L?8:0);
+      if(idx===0||idx===15) continue;
+      const x0=gx0+i*dx, y0=gy0+j*dy, x1=x0+dx, y1=y0+dy;
+      const E=[
+        ()=>{const t=(L-v0)/(v1-v0);return [x0+t*dx,y0];},
+        ()=>{const t=(L-v1)/(v2-v1);return [x1,y0+t*dy];},
+        ()=>{const t=(L-v3)/(v2-v3);return [x0+t*dx,y1];},
+        ()=>{const t=(L-v0)/(v3-v0);return [x0,y0+t*dy];}
+      ];
+      let segs;
+      switch(idx){
+        case 1:case 14: segs=[[3,0]];break;
+        case 2:case 13: segs=[[0,1]];break;
+        case 3:case 12: segs=[[3,1]];break;
+        case 4:case 11: segs=[[1,2]];break;
+        case 6:case 9: segs=[[0,2]];break;
+        case 7:case 8: segs=[[3,2]];break;
+        case 5:{const c=(v0+v1+v2+v3)/4;segs=c>=L?[[0,1],[3,2]]:[[3,0],[1,2]];break;}
+        case 10:{const c=(v0+v1+v2+v3)/4;segs=c>=L?[[3,0],[1,2]]:[[0,1],[3,2]];break;}
+      }
+      for(const s of segs){const a=E[s[0]](),b=E[s[1]]();out.push(a[0],a[1],b[0],b[1]);}
+    }
+  }
+  return out;
+}
+
+/* ---------- палитры ---------- */
+const RAMP_STOPS={
+  teal:['#440154','#3b528b','#21918c','#5ec962','#fde725'],
+  spectral:['#2b3a8f','#2f8fd0','#3fbf8f','#e6d94a','#e8833a','#b02a30'],
+  oil:['#1f4e79','#3a8fb7','#9bc98a','#e6b84a','#b5541c'],
+  water:['#f0e4b8','#a8d4e0','#3a8fc4','#0b3a78'],
+  gray:['#16181c','#6b717b','#e9ecef']
+};
+const RAMP={};
+for(const k in RAMP_STOPS) RAMP[k]=RAMP_STOPS[k].map(h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]);
+function rampColor(name,t){
+  const a=RAMP[name]; t=Math.min(1,Math.max(0,t));
+  const f=t*(a.length-1), i=Math.min(a.length-2,Math.floor(f)), u=f-i;
+  return [a[i][0]+(a[i+1][0]-a[i][0])*u,a[i][1]+(a[i+1][1]-a[i][1])*u,a[i][2]+(a[i+1][2]-a[i][2])*u];
+}
+
+/* ---------- состояние ---------- */
+const cv=$('cv'), ctx=cv.getContext('2d');
+const S={fdraw:false,fdraft:[],poolKey:'',poolVal:null,fOff:new Set(),faultsAct:[],sec:{pts:[]},draw:false,secCur:null,secGrids:null,secKey:'',dataVer:0,fnames:[],faults:[],fsegs:[],faultBad:0,sel:'',year:null,yearAtMax:true,act:[],prod:null,field:null,dynRange:null,ti:-1,prodBad:0,prodUnmatched:0,ok:false,all:[],pts:[],ext:null,grid:null,opt:null,base:null,geo:null,hover:null,dpr:1,W:600,H:400,msg:'',bad:0,merged:0};
+
+const hasVal=(P,w)=>{const v=getV(P,w);return isFinite(v)&&(!P.log||v>0);};
+const fmtRaw=(P,v)=>P.log?String(+v.toPrecision(3)):v.toFixed(P.dec);
+const invT=(P,v)=>P.log?Math.pow(10,v):v;
+
+function readOpts(){
+  const iv=parseFloat(String($('interval').value).replace(',','.'));
+  return {
+    prop:PROP(),
+    method:$('method').value,p:+$('p').value,smooth:+$('smooth').value,res:+$('res').value,
+    interval:iv>0?iv:0,mask:+$('mask').value,ramp:$('ramp').value,
+    fill:$('fill').checked,iso:$('iso').checked,wells:$('wells').checked,labels:$('labels').checked,
+    coord:$('coord').checked,depth:$('depth').checked,
+    ov:$('ovOn').checked,bmetric:$('bmetric').value,
+    faults:$('faultsOn').checked,barrier:$('faultsOn').checked&&$('fbar').checked&&PROP().group==='struct',
+    title:$('title').value.trim(),zlab:$('zlab').value.trim()||'Значение',unit:$('unit').value.trim()
+  };
+}
+
+const yearOf=w=>{const y=w.vals[5];return isFinite(y)?Math.round(y):NaN;};
+function setupYearBar(){
+  const ys=S.all.map(yearOf).filter(isFinite), bar=$('yearbar'), el=$('yr');
+  if(!ys.length){S.year=null;bar.hidden=true;return;}
+  const mn=Math.min(...ys), mx=Math.max(...ys);
+  el.min=mn; el.max=mx; el.step=1;
+  if(S.year===null||S.yearAtMax||S.year<mn||S.year>mx){S.year=mx;S.yearAtMax=true;}
+  el.value=S.year; $('yrMin').textContent=mn; $('yrMax').textContent=mx;
+  bar.hidden=(mn===mx);
+}
+function updateYearUI(){
+  if(S.year===null) return;
+  $('yrOut').textContent='≤ '+S.year;
+  $('yrCnt').textContent='скважин: '+S.act.length+' из '+S.all.length;
+}
+function reload(){
+  const r=parse($('data').value);
+  S.all=r.all; S.bad=r.bad; S.merged=r.merged;
+  const usedIds=new Set();
+  S.all.forEach((w,i)=>{let id=w.key||(w.x+'|'+w.y); if(usedIds.has(id)) id+='#'+i; usedIds.add(id); w.id=id;});
+  fillWellSelect();
+  S.dataVer++;
+  const fr=parseFaults($('faults').value); S.faults=fr.faults; S.faultBad=fr.bad;
+  applyFaultFilter(); fillFaultList();
+  buildProd(parseProd($('prod').value));
+  setupYearBar();
+  rebuild();
+}
+function rebuild(){
+  saveCfg();
+  const o=readOpts(); S.opt=o; const P=o.prop;
+  $('rowP').hidden=o.method!=='idw'; $('rowS').hidden=o.method!=='rbf';
+  $('oP').textContent=o.p; $('oS').textContent=o.smooth.toFixed(2);
+  $('oM').textContent=o.mask>=100?'нет':o.mask+'%';
+  $('ovOpts').hidden=!o.ov;
+  const showTl=!!S.prod&&(o.ov||P.dyn);
+  $('timeline').hidden=!showTl;
+  if(!showTl) stopPlay();
+  S.act=S.all.filter(w=>{const y=yearOf(w);return S.year===null||!isFinite(y)||y<=S.year;});
+  updateYearUI();
+  S.ext=null;
+  if(S.all.length){
+    const bxs=S.all.map(w=>w.x), bys=S.all.map(w=>w.y);
+    S.ext={xmin:Math.min(...bxs),xmax:Math.max(...bxs),ymin:Math.min(...bys),ymax:Math.max(...bys)};
+  }
+  S.pts=S.act.filter(w=>hasVal(P,w)).map(w=>{const raw=getV(P,w);return {x:w.x,y:w.y,name:w.name,raw,z:P.log?Math.log10(raw):raw};});
+  if(S.pts.length<3){
+    S.ok=false; S.grid=null;
+    if(!S.all.length) S.msg='Введите данные X Y Z Кп Кпр Кн или нажмите «Пример»';
+    else if(S.act.length<3) S.msg='При выбранном годе бурения (≤ '+S.year+') менее 3 скважин';
+    else if(P.dyn&&!S.prod) S.msg='Нет данных по добыче: заполните таблицу «Добыча по месяцам» или нажмите «Пример»';
+    else if(P.dyn) S.msg='На '+monthLabel(S.ti)+' менее 3 скважин с данными: «'+P.name+'»';
+    else S.msg='Недостаточно данных по показателю «'+P.name+'»: нужно минимум 3 скважины со значениями.';
+    finishRender(); return;
+  }
+  const xs=S.all.map(w=>w.x), ys=S.all.map(w=>w.y);
+  S.ext={xmin:Math.min(...xs),xmax:Math.max(...xs),ymin:Math.min(...ys),ymax:Math.max(...ys)};
+  S.grid=makeGrid(S.pts,o,S.ext);
+  if(P.dyn&&S.dynRange&&S.dynRange[P.dyn]){S.grid.zmin=S.dynRange[P.dyn][0];S.grid.zmax=S.dynRange[P.dyn][1];}
+  S.ok=S.grid.zmax>=S.grid.zmin;
+  S.msg=S.grid.note;
+  finishRender();
+}
+function finishRender(){setStats(); render(); drawTimeline(); renderWellCard(); renderSection();}
+function rebuildTime(){
+  if(PROP().dyn||(S.opt&&S.opt.ov)){rebuild();return;}
+  drawTimeline(); renderWellCard();
+}
+
+function setStats(){
+  const el=$('stats'), P=PROP(); const parts=[];
+  if(S.ok){
+    const vs=S.pts.map(p=>p.raw), mn=Math.min(...vs), mx=Math.max(...vs), me=vs.reduce((a,b)=>a+b,0)/vs.length;
+    if(P.dyn) parts.push('Дата: '+monthLabel(S.ti));
+    parts.push('Скважин: '+S.act.length+(S.act.length<S.all.length?' из '+S.all.length:'')+(S.pts.length<S.act.length?' (со значением: '+S.pts.length+')':''));
+    parts.push(P.name+': '+fmtRaw(P,mn)+' – '+fmtRaw(P,mx)+', среднее '+fmtRaw(P,me));
+    parts.push('сетка '+S.grid.nx+'×'+S.grid.ny);
+    getPools().forEach(pl=>parts.push(pl.exists
+      ? 'залежь '+pl.def.name+': ВНК '+pl.owc.toFixed(0)+' м, высота '+pl.height.toFixed(0)+' м, площадь '+areaTxt(pl.area)
+      : 'залежи «'+pl.def.name+'» нет: свод ('+pl.emax.toFixed(0)+' м) ниже ВНК'));
+    if(S.opt&&S.opt.faults&&S.faultsAct.length) parts.push('разломов: '+S.faultsAct.length+(S.faultsAct.length<S.faults.length?' из '+S.faults.length:'')+(S.opt.barrier?' (барьеры)':''));
+    if(S.opt&&S.opt.ov&&S.prod){
+      let n=0,so=0;
+      S.act.forEach(w=>{const bv=bubbleVal(S.prod.by[w.key],'oil',S.ti);if(isFinite(bv.v)&&bv.v>0){n++;so+=bv.v;}});
+      parts.push('добыча на '+monthLabel(S.ti)+': '+n+' скв., нефть '+so.toFixed(1)+' т/сут');
+    }
+    el.textContent=parts.join(' · ');
+  }else el.textContent='';
+  const add=[];
+  if(S.merged>0) add.push('объединено точек с одинаковыми координатами: '+S.merged);
+  if(S.bad>0) add.push('пропущено некорректных строк: '+S.bad);
+  if(S.faultBad>0) add.push('разломы, некорректных строк: '+S.faultBad);
+  if(S.prodBad>0) add.push('добыча, некорректных строк: '+S.prodBad);
+  if(S.prodUnmatched>0) add.push('в добыче нет совпадений по имени: '+S.prodUnmatched+' скв.');
+  if(S.ok&&S.msg) add.push(S.msg);
+  if(add.length){const sp=document.createElement('div'); sp.className='err'; sp.textContent=add.join(' · '); el.appendChild(sp);}
+  el.style.display=(parts.length||add.length)?'':'none';
+}
+
+/* ---------- отрисовка ---------- */
+function halo(c,s,x,y,fill,stroke,lw){
+  c.lineJoin='round'; c.lineWidth=lw||3; c.strokeStyle=stroke; c.strokeText(s,x,y); c.fillStyle=fill; c.fillText(s,x,y);
+}
+function fitText(c,s,maxW){
+  if(c.measureText(s).width<=maxW) return s;
+  while(s.length>1&&c.measureText(s+'…').width>maxW) s=s.slice(0,-1);
+  return s+'…';
+}
+function buildLevels(P,g,o){
+  const lv=[], range=g.zmax-g.zmin;
+  if(!(range>0)) return {levels:lv,ticks:[],stepTxt:'—'};
+  let stepTxt, decs=0;
+  if(P.log){
+    if(o.interval>0){
+      const st=o.interval;
+      for(let k=Math.ceil(g.zmin/st);k*st<=g.zmax;k++) lv.push({v:+(k*st).toPrecision(12),major:k%5===0});
+      stepTxt=st+' lg';
+    }else{
+      for(let e=Math.floor(g.zmin);e<=Math.ceil(g.zmax);e++)
+        for(const m of [1,2,5]){const v=e+Math.log10(m); if(v>=g.zmin&&v<=g.zmax) lv.push({v,major:m===1});}
+      stepTxt='1–2–5';
+    }
+    lv.forEach(l=>{l.text=String(+Math.pow(10,l.v).toPrecision(3));});
+  }else{
+    let st=o.interval>0?o.interval:niceStep(range,10);
+    if(range/st>300) st=niceStep(range,300);
+    decs=decimals(st);
+    for(let k=Math.ceil(g.zmin/st);k*st<=g.zmax;k++) lv.push({v:+(k*st).toPrecision(12),major:k%5===0,text:(+(k*st).toPrecision(12)).toFixed(decs)});
+    stepTxt=String(st);
+  }
+  let ticks;
+  if(P.log){
+    const mj=lv.filter(l=>l.major);
+    ticks=(lv.length>8&&mj.length>=2)?mj:lv;
+  }else{
+    const cs=niceStep(range,5), cd=decimals(cs); ticks=[];
+    for(let k=Math.ceil(g.zmin/cs);k*cs<=g.zmax;k++){const v=+(k*cs).toPrecision(12);ticks.push({v,text:v.toFixed(cd)});}
+  }
+  return {levels:lv,ticks,stepTxt};
+}
+
+function render(){
+  const wrap=$('mapwrap');
+  const W=Math.max(300,Math.floor(wrap.clientWidth)||600);
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  S.dpr=dpr; S.W=W;
+  const base=document.createElement('canvas');
+  const o=S.opt, g=S.grid, P=o.prop;
+
+  if(!S.ok){
+    S.H=320;
+    base.width=W*dpr; base.height=S.H*dpr;
+    const b=base.getContext('2d'); b.scale(dpr,dpr);
+    b.fillStyle=cssv('--panel'); b.fillRect(0,0,W,S.H);
+    b.fillStyle=cssv('--muted'); b.font='14px '+FONT; b.textAlign='center'; b.textBaseline='middle';
+    b.fillText(fitText(b,S.msg||'Нет данных',W-32),W/2,S.H/2);
+    S.base=base; S.geo=null; S.hover=null; applyBase(); return;
+  }
+
+  const narrow=W<520;
+  const ml=narrow?52:64, mr=narrow?66:94, mt=58, mb=52;
+  const availW=W-ml-mr;
+  const xr=g.gx1-g.gx0, yr=g.gy1-g.gy0;
+  const H=Math.round(Math.min(780,Math.max(380,availW*yr/xr+mt+mb)));
+  const availH=H-mt-mb;
+  const sc=Math.min(availW/xr,availH/yr);
+  const pw=xr*sc, ph=yr*sc;
+  const ox=ml+(availW-pw)/2, oy=mt;
+  S.H=H;
+  base.width=W*dpr; base.height=H*dpr;
+  const b=base.getContext('2d'); b.scale(dpr,dpr);
+  const px=x=>ox+(x-g.gx0)*sc, py=y=>oy+(g.gy1-y)*sc;
+  S.geo={ox,oy,pw,ph,sc};
+
+  const C={panel:cssv('--panel'),plot:cssv('--plot'),text:cssv('--text'),muted:cssv('--muted'),b2:cssv('--border2'),hl:cssv('--hl')};
+  b.fillStyle=C.panel; b.fillRect(0,0,W,H);
+
+  const LV=buildLevels(P,g,o);
+  const ovDraw=!!(o.ov&&S.prod); let ovInfo=null; S.bub=[];
+
+  b.textAlign='left'; b.textBaseline='alphabetic';
+  b.fillStyle=C.text; b.font='600 15px '+FONT;
+  let dateW=0;
+  if((P.dyn||ovDraw)&&S.prod){
+    const dt=monthLabel(S.ti);
+    b.font='600 15px '+FONT; dateW=b.measureText(dt).width+16;
+    b.textAlign='right'; b.fillStyle=C.hl; b.fillText(dt,W-14,24);
+    b.textAlign='left'; b.fillStyle=C.text;
+  }
+  b.font='600 15px '+FONT;
+  b.fillText(fitText(b,o.title||'Карта',W-28-dateW),14,24);
+  b.fillStyle=C.muted; b.font='12px '+FONT;
+  const methodTxt=(g.used==='rbf'?'RBF thin-plate, сглаживание '+o.smooth.toFixed(2):'IDW, p='+o.p)+(P.log?', по lg':'');
+  b.fillText(fitText(b,'Метод: '+methodTxt+' · интервал изолиний '+LV.stepTxt+(ovDraw?' · пузыри: '+BM[o.bmetric].label.toLowerCase():''),W-28),14,43);
+
+  b.fillStyle=C.plot; b.fillRect(ox,oy,pw,ph);
+  b.save(); b.beginPath(); b.rect(ox,oy,pw,ph); b.clip();
+
+  const zr=(g.zmax-g.zmin)||1;
+  const tOf=z=>{const t=(z-g.zmin)/zr;return o.depth?1-t:t;};
+
+  if(o.fill){
+    const off=document.createElement('canvas'); off.width=g.nx; off.height=g.ny;
+    const oc=off.getContext('2d'), img=oc.createImageData(g.nx,g.ny);
+    for(let j=0;j<g.ny;j++)for(let i=0;i<g.nx;i++){
+      const v=g.z[j*g.nx+i], k=((g.ny-1-j)*g.nx+i)*4;
+      if(v!==v){img.data[k+3]=0;continue;}
+      const c=rampColor(o.ramp,tOf(v));
+      img.data[k]=c[0];img.data[k+1]=c[1];img.data[k+2]=c[2];img.data[k+3]=255;
+    }
+    oc.putImageData(img,0,0);
+    b.imageSmoothingEnabled=true; b.imageSmoothingQuality='high';
+    const cw=g.dx*sc, chh=g.dy*sc;
+    b.drawImage(off,px(g.gx0)-cw/2,py(g.gy1)-chh/2,g.nx*cw,g.ny*chh);
+  }
+
+  const tx=[],ty=[];
+  const xs_=niceStep(xr,6), ys_=niceStep(yr,6);
+  for(let k=Math.ceil(g.gx0/xs_);k*xs_<=g.gx1;k++) tx.push(+(k*xs_).toPrecision(12));
+  for(let k=Math.ceil(g.gy0/ys_);k*ys_<=g.gy1;k++) ty.push(+(k*ys_).toPrecision(12));
+
+  if(o.coord){
+    b.strokeStyle='rgba(255,255,255,.10)'; b.lineWidth=1; b.beginPath();
+    tx.forEach(v=>{const x=Math.round(px(v))+.5;b.moveTo(x,oy);b.lineTo(x,oy+ph);});
+    ty.forEach(v=>{const y=Math.round(py(v))+.5;b.moveTo(ox,y);b.lineTo(ox+pw,y);});
+    b.stroke();
+  }
+
+  if(o.iso&&LV.levels.length){
+    const lineCol=o.fill?'rgba(8,12,18,.72)':'rgba(217,223,231,.85)';
+    const placed=[], lab=[];
+    LV.levels.forEach(L=>{
+      const seg=contour(g,L.v);
+      if(!seg.length) return;
+      b.strokeStyle=lineCol; b.lineWidth=L.major?1.5:0.8; b.lineJoin='round'; b.beginPath();
+      for(let i=0;i<seg.length;i+=4){b.moveTo(px(seg[i]),py(seg[i+1]));b.lineTo(px(seg[i+2]),py(seg[i+3]));}
+      b.stroke();
+      let count=0;
+      for(let i=0;i<seg.length&&count<4;i+=4*3){
+        const x1=px(seg[i]),y1=py(seg[i+1]),x2=px(seg[i+2]),y2=py(seg[i+3]);
+        const mx=(x1+x2)/2,my=(y1+y2)/2;
+        if(mx<ox+22||mx>ox+pw-22||my<oy+12||my>oy+ph-12) continue;
+        let ok=true;
+        for(const q of placed){const a=q[0]-mx,c=q[1]-my;if(a*a+c*c<110*110){ok=false;break;}}
+        if(!ok) continue;
+        let a=Math.atan2(y2-y1,x2-x1);
+        if(a>Math.PI/2) a-=Math.PI; if(a<-Math.PI/2) a+=Math.PI;
+        placed.push([mx,my]); lab.push([mx,my,a,L.text]); count++;
+      }
+    });
+    b.font='500 11px '+FONT; b.textAlign='center'; b.textBaseline='middle';
+    lab.forEach(l=>{
+      b.save(); b.translate(l[0],l[1]); b.rotate(l[2]);
+      halo(b,l[3],0,0,'#f1f4f8','rgba(8,12,18,.88)',3.2);
+      b.restore();
+    });
+  }
+
+  drawPools(b,{px,py,sc,P});
+  if(o.faults&&S.faultsAct.length){
+    const flab=[];
+    S.faultsAct.forEach(f=>{
+      b.beginPath();
+      f.pts.forEach((p,i)=>{const fx=px(p.x),fy=py(p.y); i?b.lineTo(fx,fy):b.moveTo(fx,fy);});
+      b.lineJoin='round'; b.lineCap='round';
+      b.strokeStyle='rgba(8,12,18,.85)'; b.lineWidth=4.6; b.stroke();
+      b.strokeStyle='#ff6b81'; b.lineWidth=2.2; b.stroke();
+      let bi=-1,bl=0;
+      for(let i=0;i<f.pts.length-1;i++){const l=Math.hypot(f.pts[i+1].x-f.pts[i].x,f.pts[i+1].y-f.pts[i].y);if(l>bl){bl=l;bi=i;}}
+      if(bi>=0){
+        const x1=px(f.pts[bi].x),y1=py(f.pts[bi].y),x2=px(f.pts[bi+1].x),y2=py(f.pts[bi+1].y);
+        let a=Math.atan2(y2-y1,x2-x1); if(a>Math.PI/2) a-=Math.PI; if(a<-Math.PI/2) a+=Math.PI;
+        flab.push([(x1+x2)/2+Math.sin(a)*10,(y1+y2)/2-Math.cos(a)*10,a,f.name]);
+      }
+    });
+    b.font='600 11px '+FONT; b.textAlign='center'; b.textBaseline='middle';
+    flab.forEach(l=>{b.save();b.translate(l[0],l[1]);b.rotate(l[2]);halo(b,l[3],0,0,'#ffc2cb','rgba(8,12,18,.92)',3.2);b.restore();});
+  }
+  drawSecLine(b,px,py,sc);
+  if(ovDraw) ovInfo=drawBubbles(b,{px,py,narrow,o});
+
+  if(o.wells&&!ovDraw){
+    S.act.forEach(w=>{
+      const x=px(w.x),y=py(w.y), has=hasVal(P,w);
+      b.beginPath(); b.arc(x,y,has?3.6:3,0,Math.PI*2);
+      if(has){b.fillStyle=C.hl; b.fill(); b.lineWidth=1.2; b.strokeStyle='rgba(8,12,18,.9)'; b.stroke();}
+      else{b.lineWidth=1.3; b.strokeStyle=C.muted; b.stroke();}
+      if(o.labels){
+        b.textAlign='left'; b.textBaseline='alphabetic';
+        if(w.name){b.font='500 11px '+FONT;halo(b,w.name,x+7,y-4,has?'#f1f4f8':'#9aa6b6','rgba(8,12,18,.88)',3);}
+        if(has){b.font='10.5px '+FONT; halo(b,fmtRaw(P,getV(P,w)),x+7,y+9,'#c9d2dd','rgba(8,12,18,.88)',3);}
+      }
+    });
+  }
+
+  if(S.sel){
+    const sw=S.act.find(w=>w.id===S.sel);
+    if(sw){
+      const sx=px(sw.x), sy=py(sw.y);
+      let rr=12;
+      if(ovDraw&&S.bub){const it=S.bub.find(i=>i.w===sw); if(it&&it.r>0) rr=it.r+6;}
+      b.beginPath(); b.arc(sx,sy,rr,0,Math.PI*2); b.lineWidth=2.2; b.strokeStyle=C.hl; b.stroke();
+      b.font='600 12px '+FONT; b.textAlign='left'; b.textBaseline='alphabetic';
+      halo(b,sw.name||'скважина',sx+rr+4,sy-2,'#ffd2a8','rgba(8,12,18,.92)',3.5);
+    }
+  }
+  {
+    const L=niceStep(120/sc,1), len=L*sc, x0=ox+14, y0=oy+ph-16;
+    b.strokeStyle='#f1f4f8'; b.lineWidth=2; b.beginPath();
+    b.moveTo(x0,y0-4);b.lineTo(x0,y0);b.lineTo(x0+len,y0);b.lineTo(x0+len,y0-4);b.stroke();
+    b.font='500 11px '+FONT; b.textAlign='left'; b.textBaseline='alphabetic';
+    halo(b,L+' '+(o.unit||''),x0,y0-8,'#f1f4f8','rgba(8,12,18,.88)',3);
+    const nx_=ox+pw-20, ny_=oy+34;
+    b.beginPath(); b.moveTo(nx_,ny_-18);b.lineTo(nx_-6,ny_);b.lineTo(nx_,ny_-4);b.lineTo(nx_+6,ny_);b.closePath();
+    b.fillStyle='#f1f4f8'; b.strokeStyle='rgba(8,12,18,.88)'; b.lineWidth=1.5; b.stroke(); b.fill();
+    b.textAlign='center'; halo(b,'С',nx_,ny_+14,'#f1f4f8','rgba(8,12,18,.88)',3);
+  }
+  b.restore();
+  if(ovDraw&&ovInfo) drawBubbleLegendBox(b,{ox,oy,pw,ph,C},ovInfo);
+
+  b.strokeStyle=C.b2; b.lineWidth=1; b.strokeRect(ox+.5,oy+.5,pw,ph);
+  b.fillStyle=C.muted; b.font='11.5px '+FONT;
+  const dX=decimals(xs_), dY=decimals(ys_);
+  b.textAlign='center'; b.textBaseline='top';
+  b.strokeStyle=C.b2; b.beginPath();
+  tx.forEach(v=>{const x=Math.round(px(v))+.5;b.moveTo(x,oy+ph);b.lineTo(x,oy+ph+4);});
+  ty.forEach(v=>{const y=Math.round(py(v))+.5;b.moveTo(ox,y);b.lineTo(ox-4,y);});
+  b.stroke();
+  tx.forEach(v=>b.fillText(v.toFixed(dX),px(v),oy+ph+7));
+  b.textAlign='right'; b.textBaseline='middle';
+  ty.forEach(v=>b.fillText(v.toFixed(dY),ox-8,py(v)));
+  b.textAlign='center'; b.textBaseline='alphabetic'; b.fillStyle=C.text; b.font='500 12px '+FONT;
+  b.fillText('X, '+(o.unit||''),ox+pw/2,oy+ph+40);
+  b.save(); b.translate(14,oy+ph/2); b.rotate(-Math.PI/2); b.fillText('Y, '+(o.unit||''),0,0); b.restore();
+
+  if(o.fill){
+    const cbx=ox+pw+16, cbw=14;
+    const rows=Math.max(2,Math.round(ph));
+    for(let r=0;r<rows;r++){
+      const f=r/(rows-1);
+      const z=o.depth?g.zmin+f*zr:g.zmax-f*zr;
+      const c=rampColor(o.ramp,tOf(z));
+      b.fillStyle='rgb('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+')';
+      b.fillRect(cbx,oy+r*(ph/rows),cbw,ph/rows+1);
+    }
+    b.strokeStyle=C.b2; b.strokeRect(cbx+.5,oy+.5,cbw,ph);
+    b.fillStyle=C.muted; b.font='11.5px '+FONT; b.textAlign='left'; b.textBaseline='middle';
+    LV.ticks.forEach(tk=>{
+      const f=(tk.v-g.zmin)/zr, y=oy+(o.depth?f:1-f)*ph;
+      b.strokeStyle=C.b2; b.beginPath(); b.moveTo(cbx+cbw,y+.5); b.lineTo(cbx+cbw+4,y+.5); b.stroke();
+      b.fillText(tk.text,cbx+cbw+7,y);
+    });
+    b.fillStyle=C.text; b.font='500 11.5px '+FONT; b.textBaseline='alphabetic';
+    b.fillText(fitText(b,o.zlab,W-cbx-4),cbx,oy-8);
+  }
+
+  S.base=base; applyBase();
+}
+
+function applyBase(){
+  cv.width=S.W*S.dpr; cv.height=S.H*S.dpr; cv.style.height=S.H+'px';
+  paint();
+}
+function paint(){
+  ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,cv.width,cv.height);
+  if(S.base) ctx.drawImage(S.base,0,0);
+  if(S.hover&&S.geo){
+    ctx.setTransform(S.dpr,0,0,S.dpr,0,0);
+    const {ox,oy,pw,ph}=S.geo, h=S.hover;
+    ctx.save(); ctx.beginPath(); ctx.rect(ox,oy,pw,ph); ctx.clip();
+    ctx.strokeStyle=cssv('--hl'); ctx.lineWidth=1; ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(h.x+.5,oy); ctx.lineTo(h.x+.5,oy+ph); ctx.moveTo(ox,h.y+.5); ctx.lineTo(ox+pw,h.y+.5); ctx.stroke();
+    ctx.restore();
+  }
+  if(S.geo&&S.grid){
+    ctx.setTransform(S.dpr,0,0,S.dpr,0,0);
+    if(S.draw&&S.sec.pts.length&&S.hover){
+      const l=S.sec.pts[S.sec.pts.length-1], p=dataToMap(l.x,l.y);
+      ctx.save(); ctx.strokeStyle='#4dd0e1'; ctx.lineWidth=1.6; ctx.setLineDash([6,4]);
+      ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(S.hover.x,S.hover.y); ctx.stroke(); ctx.restore();
+    }
+    if(S.fdraw&&S.fdraft.length){
+      ctx.save(); ctx.lineJoin='round'; ctx.lineCap='round';
+      const path=()=>{ctx.beginPath(); S.fdraft.forEach((p,i)=>{const m=dataToMap(p.x,p.y); i?ctx.lineTo(m.x,m.y):ctx.moveTo(m.x,m.y);});};
+      if(S.fdraft.length>=2){path(); ctx.strokeStyle='rgba(8,12,18,.85)'; ctx.lineWidth=4.6; ctx.stroke(); path(); ctx.strokeStyle='#ff6b81'; ctx.lineWidth=2.2; ctx.stroke();}
+      if(S.hover){const l=dataToMap(S.fdraft[S.fdraft.length-1].x,S.fdraft[S.fdraft.length-1].y); ctx.setLineDash([6,4]); ctx.strokeStyle='#ff9fae'; ctx.lineWidth=1.8; ctx.beginPath(); ctx.moveTo(l.x,l.y); ctx.lineTo(S.hover.x,S.hover.y); ctx.stroke(); ctx.setLineDash([]);}
+      S.fdraft.forEach(p=>{const m=dataToMap(p.x,p.y); ctx.beginPath(); ctx.arc(m.x,m.y,4,0,Math.PI*2); ctx.fillStyle='#ff6b81'; ctx.fill(); ctx.lineWidth=1.5; ctx.strokeStyle='#0e1217'; ctx.stroke();});
+      ctx.restore();
+    }
+    if(S.secCur){
+      const p=dataToMap(S.secCur.x,S.secCur.y);
+      ctx.beginPath(); ctx.arc(p.x,p.y,5.5,0,Math.PI*2); ctx.fillStyle='#4dd0e1'; ctx.fill();
+      ctx.lineWidth=1.6; ctx.strokeStyle='#0e1217'; ctx.stroke();
+    }
+  }
+}
+
+/* ---------- наведение ---------- */
+function sampleZ(g,x,y){
+  const fi=(x-g.gx0)/g.dx, fj=(y-g.gy0)/g.dy;
+  if(fi<0||fj<0||fi>g.nx-1||fj>g.ny-1) return NaN;
+  const i=Math.min(g.nx-2,Math.floor(fi)), j=Math.min(g.ny-2,Math.floor(fj)), tx=fi-i, ty=fj-j;
+  const a=g.z[j*g.nx+i], b=g.z[j*g.nx+i+1], c=g.z[(j+1)*g.nx+i], d=g.z[(j+1)*g.nx+i+1];
+  return (a*(1-tx)+b*tx)*(1-ty)+(c*(1-tx)+d*tx)*ty;
+}
+function onMove(e){
+  if(!S.ok||!S.geo) return;
+  const r=cv.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
+  const {ox,oy,pw,ph,sc}=S.geo, g=S.grid, P=S.opt.prop;
+  if(x<ox||x>ox+pw||y<oy||y>oy+ph){clearHover();return;}
+  S.hover={x,y}; paint();
+  if(S.opt.ov&&S.prod&&S.bub&&S.bub.length){
+    let best=null,bd=Infinity;
+    S.bub.forEach(it=>{if(it.r>0){const d=Math.hypot(it.x-x,it.y-y);if(d<=it.r+4&&d<bd){bd=d;best=it;}}});
+    if(best){
+      const e=best.e, ti=S.ti, oil=e.oil[ti], wc=e.wc[ti], cum=e.cum[ti];
+      $('readout').textContent=(best.w.name||'без имени')+' · '+monthLabel(ti)+': нефть '+(isFinite(oil)?oil.toFixed(1)+' т/сут':'—')+
+        ' · обводнённость '+(isFinite(wc)?wc.toFixed(1)+'%':'—')+' · накоплено '+(isFinite(cum)?cum.toFixed(1)+' тыс. т':'—');
+      return;
+    }
+  }
+  const X=g.gx0+(x-ox)/sc, Y=g.gy1-(y-oy)/sc, Zt=sampleZ(g,X,Y);
+  const u=S.opt.unit||'';
+  let near=null,nd=Infinity;
+  S.pts.forEach(p=>{const d=Math.hypot(p.x-X,p.y-Y);if(d<nd){nd=d;near=p;}});
+  const dX=decimals(niceStep(g.gx1-g.gx0,200)), dY=decimals(niceStep(g.gy1-g.gy0,200));
+  let s='X '+X.toFixed(dX)+' · Y '+Y.toFixed(dY)+' · ';
+  s+=(Zt===Zt)?(S.opt.zlab+': '+fmtRaw(P,invT(P,Zt))):'вне зоны построения';
+  if(near) s+=' · ближайшая: '+(near.name||'без имени')+' ('+nd.toFixed(0)+' '+u+', '+fmtRaw(P,near.raw)+')';
+  $('readout').textContent=s;
+}
+function clearHover(){S.hover=null;paint();$('readout').textContent=DEFAULT_READOUT;}
+cv.addEventListener('pointermove',onMove);
+cv.addEventListener('pointerdown',onMove);
+cv.addEventListener('pointerleave',clearHover);
+cv.addEventListener('pointercancel',clearHover);
+
+/* ---------- данные добычи поверх карты ---------- */
+const DYN_META={
+  oil:{unit:'т/сут',txt:' · суммарный дебит нефти'},
+  liq:{unit:'т/сут',txt:' · суммарный дебит жидкости'},
+  cum:{unit:'тыс. т',txt:' · накопленная добыча'},
+  wc:{unit:'%',txt:' · средневзвешенная обводнённость'}
+};
+const OIL_C='#d9962f', WATER_C='#3f93cf';
+const BM={
+  oil:{label:'Дебит нефти, т/сут',range:'oil'},
+  liq:{label:'Дебит жидкости, т/сут',range:'liq'},
+  cum:{label:'Накопл. добыча нефти, тыс. т',range:'cum'}
+};
+function bubbleVal(e,key,ti){
+  if(!e) return {v:NaN,share:NaN};
+  const oil=e.oil[ti], wc=e.wc[ti];
+  if(key==='cum'){const c=e.cum[ti], cl=e.cumL[ti]; return {v:c,share:cl>0?c/cl:1};}
+  if(!isFinite(oil)) return {v:NaN,share:NaN};
+  const wv=isFinite(wc)?Math.min(99.9,Math.max(0,wc)):0, liq=oil/(1-wv/100);
+  return {v:key==='liq'?liq:oil,share:1-wv/100};
+}
+function drawBubbles(b,k){
+  const {px,py,narrow,o}=k, key=o.bmetric;
+  const rg=S.dynRange&&S.dynRange[BM[key].range], vmax=rg?rg[1]:1;
+  const rMax=narrow?18:26, items=[];
+  S.act.forEach(w=>{
+    const e=S.prod.by[w.key], bv=bubbleVal(e,key,S.ti);
+    const r=(isFinite(bv.v)&&bv.v>0)?Math.max(2.5,rMax*Math.sqrt(bv.v/vmax)):0;
+    items.push({w,e,x:px(w.x),y:py(w.y),v:bv.v,share:bv.share,r});
+  });
+  S.bub=items;
+  items.filter(it=>it.r>0).sort((a,c)=>c.r-a.r).forEach(it=>{
+    const f=isFinite(it.share)?Math.min(1,Math.max(0,it.share)):1, a0=-Math.PI/2;
+    b.globalAlpha=.92;
+    if(f>=0.999||f<=0.001){
+      b.beginPath(); b.arc(it.x,it.y,it.r,0,Math.PI*2); b.fillStyle=f>=0.999?OIL_C:WATER_C; b.fill();
+    }else{
+      const a1=a0+Math.PI*2*f;
+      b.beginPath(); b.moveTo(it.x,it.y); b.arc(it.x,it.y,it.r,a0,a1); b.closePath(); b.fillStyle=OIL_C; b.fill();
+      b.beginPath(); b.moveTo(it.x,it.y); b.arc(it.x,it.y,it.r,a1,a0+Math.PI*2); b.closePath(); b.fillStyle=WATER_C; b.fill();
+    }
+    b.globalAlpha=1;
+    b.beginPath(); b.arc(it.x,it.y,it.r,0,Math.PI*2); b.lineWidth=1.2; b.strokeStyle='rgba(241,244,248,.95)'; b.stroke();
+  });
+  if(o.wells){
+    items.filter(it=>it.r===0).forEach(it=>{
+      b.beginPath(); b.arc(it.x,it.y,3,0,Math.PI*2); b.lineWidth=1.3; b.strokeStyle='#8693a4'; b.stroke();
+    });
+  }
+  if(o.labels){
+    b.textAlign='left'; b.textBaseline='alphabetic';
+    items.forEach(it=>{
+      const off=(it.r>0?it.r:3)+4;
+      if(it.w.name){b.font='500 11px '+FONT;halo(b,it.w.name,it.x+off,it.y-1,it.r>0?'#f1f4f8':'#9aa6b6','rgba(8,12,18,.88)',3);}
+      if(it.r>0){b.font='10.5px '+FONT;halo(b,it.v.toFixed(1),it.x+off,it.y+11,'#c9d2dd','rgba(8,12,18,.88)',3);}
+    });
+  }
+  return {rMax,vmax,key};
+}
+function drawBubbleLegendBox(b,k,info){
+  const {ox,oy,pw,ph,C}=k, {rMax,vmax,key}=info;
+  const mag=Math.pow(10,Math.floor(Math.log10(vmax)));
+  let ref1=Math.floor(vmax/mag)*mag; if(!(ref1>0)) ref1=vmax;
+  const refs=[ref1,ref1/2,ref1/10].filter(v=>v>0&&v<=vmax*1.0001);
+  b.font='500 11px '+FONT;
+  const title=BM[key].label, tw=b.measureText(title).width;
+  const pad=8, bw=Math.ceil(Math.max(tw,2*rMax+44,120))+2*pad, bh=pad+13+6+2*rMax+10+12+pad;
+  const bx=ox+pw-bw-8, by=oy+ph-bh-8;
+  b.fillStyle='rgba(16,21,27,.9)'; b.fillRect(bx,by,bw,bh);
+  b.strokeStyle=C.b2; b.lineWidth=1; b.strokeRect(bx+.5,by+.5,bw-1,bh-1);
+  b.fillStyle=C.text; b.textAlign='left'; b.textBaseline='alphabetic';
+  b.fillText(title,bx+pad,by+pad+10);
+  const cx=bx+pad+rMax, yb=by+pad+13+6+2*rMax, tx=bx+pad+2*rMax+6;
+  refs.forEach(v=>{
+    const r=Math.max(2.5,rMax*Math.sqrt(v/vmax));
+    b.strokeStyle='#8693a4'; b.beginPath(); b.arc(cx,yb-r,r,0,Math.PI*2); b.stroke();
+    b.beginPath(); b.moveTo(cx,yb-2*r); b.lineTo(tx,yb-2*r); b.stroke();
+    b.fillStyle=C.muted; b.font='10.5px '+FONT; b.textBaseline='middle';
+    b.fillText(String(+v.toPrecision(2)),tx+3,yb-2*r);
+  });
+  const yk=yb+10+6;
+  b.font='11px '+FONT; b.textBaseline='middle';
+  b.fillStyle=OIL_C; b.fillRect(bx+pad,yk-5,10,10); b.fillStyle=C.text; b.fillText('нефть',bx+pad+15,yk);
+  const w1=b.measureText('нефть').width;
+  b.fillStyle=WATER_C; b.fillRect(bx+pad+15+w1+12,yk-5,10,10); b.fillStyle=C.text; b.fillText('вода',bx+pad+15+w1+27,yk);
+}
+
+/* ---------- шкала времени ---------- */
+const tl=$('tl');
+let playT=null, tlDrag=false, pend=false;
+function rebuildSoon(){if(pend)return;pend=true;requestAnimationFrame(()=>{pend=false;rebuild();});}
+let pendT=false;
+function timeSoon(){if(pendT)return;pendT=true;requestAnimationFrame(()=>{pendT=false;rebuildTime();});}
+function setPlayUI(){const b=$('play');b.textContent=playT?'❚❚':'▶';b.setAttribute('aria-label',playT?'Пауза':'Воспроизвести');}
+function stopPlay(){if(playT){clearInterval(playT);playT=null;}setPlayUI();}
+function startPlay(){
+  if(!S.prod) return;
+  stopPlay();
+  if(S.ti>=S.prod.N-1) S.ti=0;
+  playT=setInterval(()=>{
+    if(!S.prod||S.ti>=S.prod.N-1){stopPlay();return;}
+    S.ti++; rebuildTime();
+    if(S.ti>=S.prod.N-1) stopPlay();
+  },+$('speed').value);
+  setPlayUI(); rebuildTime();
+}
+function setTime(i){
+  if(!S.prod) return;
+  i=Math.max(0,Math.min(S.prod.N-1,i));
+  if(i===S.ti) return;
+  S.ti=i; timeSoon();
+}
+function tlIndex(e){
+  const r=tl.getBoundingClientRect(), pad=10, f=(e.clientX-r.left-pad)/Math.max(1,r.width-2*pad);
+  return Math.round(f*(S.prod.N-1));
+}
+tl.addEventListener('pointerdown',e=>{if(!S.prod)return;stopPlay();tlDrag=true;try{tl.setPointerCapture(e.pointerId);}catch(_){}setTime(tlIndex(e));});
+tl.addEventListener('pointermove',e=>{if(tlDrag&&S.prod)setTime(tlIndex(e));});
+['pointerup','pointercancel'].forEach(ev=>tl.addEventListener(ev,()=>{tlDrag=false;}));
+tl.addEventListener('keydown',e=>{
+  if(!S.prod) return;
+  const k=e.key; let d=null;
+  if(k==='ArrowLeft'||k==='ArrowDown') d=e.shiftKey?-12:-1;
+  else if(k==='ArrowRight'||k==='ArrowUp') d=e.shiftKey?12:1;
+  else if(k==='Home'){stopPlay();setTime(0);e.preventDefault();return;}
+  else if(k==='End'){stopPlay();setTime(S.prod.N-1);e.preventDefault();return;}
+  else if(k===' '||k==='Enter'){playT?stopPlay():startPlay();e.preventDefault();return;}
+  if(d!==null){stopPlay();setTime(S.ti+d);e.preventDefault();}
+});
+$('play').addEventListener('click',()=>{playT?stopPlay():startPlay();});
+$('speed').addEventListener('change',()=>{if(playT) startPlay();});
+
+function drawTimeline(){
+  const box=$('timeline');
+  if(box.hidden||!S.prod) return;
+  const W=Math.max(200,Math.floor(tl.clientWidth||box.clientWidth-24)), H=76, dpr=Math.min(2,window.devicePixelRatio||1);
+  tl.width=W*dpr; tl.height=H*dpr; tl.style.height=H+'px';
+  const c=tl.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,W,H);
+  const key=(PROP().dyn||$('bmetric').value), N=S.prod.N, F=S.field[key], padL=10, padR=10, top=8, bot=22, h=H-top-bot, w=W-padL-padR;
+  const xi=i=>padL+(N>1?i/(N-1):0)*w;
+  let mx=0; for(let i=0;i<N;i++) if(isFinite(F[i])&&F[i]>mx) mx=F[i];
+  mx=key==='wc'?100:(mx>0?mx*1.08:1);
+  const yv=v=>top+h-(v/mx)*h;
+  const col={line:cssv('--line'),grid:cssv('--border'),muted:cssv('--muted'),hl:cssv('--hl'),b2:cssv('--border2')};
+  // сетка по годам
+  c.font='11px '+FONT; c.fillStyle=col.muted; c.textBaseline='alphabetic';
+  const perYear=w/Math.max(1,N-1)*12, every=perYear<40?2:1;
+  for(let i=0;i<N;i++){
+    const k=S.prod.kmin+i;
+    if(k%12!==0&&i!==0) continue;
+    const yr=Math.floor(k/12);
+    if(k%12===0&&(yr%every!==0)) continue;
+    const x=Math.round(xi(i))+.5;
+    c.strokeStyle=col.grid; c.beginPath(); c.moveTo(x,top); c.lineTo(x,top+h+4); c.stroke();
+    c.textAlign=(x<padL+16)?'left':'center';
+    c.fillText(String(yr),x,H-6);
+  }
+  c.strokeStyle=col.b2; c.beginPath(); c.moveTo(padL,top+h+.5); c.lineTo(padL+w,top+h+.5); c.stroke();
+  // кривая по полю
+  const pts=[]; for(let i=0;i<N;i++) if(isFinite(F[i])) pts.push([xi(i),yv(F[i])]);
+  if(pts.length>1){
+    c.beginPath(); c.moveTo(pts[0][0],top+h); pts.forEach(p=>c.lineTo(p[0],p[1])); c.lineTo(pts[pts.length-1][0],top+h); c.closePath();
+    c.fillStyle='rgba(92,200,215,.15)'; c.fill();
+    c.beginPath(); pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));
+    c.strokeStyle=col.line; c.lineWidth=1.6; c.lineJoin='round'; c.stroke();
+  }
+  // курсор
+  const x=xi(S.ti);
+  c.strokeStyle=col.hl; c.lineWidth=1.5; c.beginPath(); c.moveTo(Math.round(x)+.5,top-2); c.lineTo(Math.round(x)+.5,top+h); c.stroke();
+  if(isFinite(F[S.ti])){c.beginPath();c.arc(x,yv(F[S.ti]),3.5,0,Math.PI*2);c.fillStyle=col.hl;c.fill();}
+  // подписи
+  const lab=monthLabel(S.ti), val=F[S.ti];
+  $('tlDate').textContent=lab;
+  $('tlField').textContent='Поле: '+(isFinite(val)?val.toLocaleString('ru-RU',{maximumFractionDigits:1})+' '+DYN_META[key].unit:'нет данных')+DYN_META[key].txt;
+  tl.setAttribute('aria-valuemin','0'); tl.setAttribute('aria-valuemax',String(N-1));
+  tl.setAttribute('aria-valuenow',String(S.ti)); tl.setAttribute('aria-valuetext',lab);
+}
+
+/* ---------- выбор скважины ---------- */
+function fillWellSelect(){
+  const sel=$('wellSel');
+  sel.textContent='';
+  const o0=document.createElement('option'); o0.value=''; o0.textContent='Все скважины'; sel.appendChild(o0);
+  S.all.forEach((w,i)=>{
+    const o=document.createElement('option'); o.value=w.id;
+    o.textContent=w.name||('Скв. №'+(i+1)+' ('+w.x+'; '+w.y+')'); sel.appendChild(o);
+  });
+  if(!S.all.some(w=>w.id===S.sel)) S.sel='';
+  sel.value=S.sel;
+  $('wellCnt').textContent=S.all.length?S.all.length+' шт.':'';
+  $('dataCnt').textContent=S.all.length?S.all.length+' скв.':'нет данных';
+}
+function renderWellCard(){
+  const dl=$('wellCard'); dl.textContent='';
+  const w=S.all.find(x=>x.id===S.sel);
+  if(!w){dl.hidden=true;return;}
+  dl.hidden=false;
+  const add=(k,v,cls)=>{
+    if(cls){const d=document.createElement('div');d.className=cls;d.textContent=k;dl.appendChild(d);return;}
+    const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=k;dd.textContent=v;dl.appendChild(dt);dl.appendChild(dd);
+  };
+  const num=(idx,dec,unit)=>{const v=w.vals[idx];return isFinite(v)?v.toFixed(dec)+(unit?' '+unit:''):'—';};
+  const u=$('unit').value.trim();
+  add(w.name||'Скважина',null,'wh');
+  if(!S.act.includes(w)) add('Скрыта фильтром: пробурена в '+yearOf(w)+' г., позже выбранного года',null,'wn');
+  add('X / Y',w.x+' / '+w.y+(u?' '+u:''));
+  add('Альтитуда',num(4,1,'м'));
+  add('Год бурения',isFinite(yearOf(w))?String(yearOf(w)):'—');
+  add('Кровля пласта',num(0,1,'м'));
+  add('Кровля мела',num(6,1,'м'));
+  add('Кровля юры',num(7,1,'м'));
+  add('Кровля триаса',num(8,1,'м'));
+  add('Пористость',num(1,1,'%'));
+  const k=w.vals[2]; add('Проницаемость',isFinite(k)?fmtRaw(PROPS.find(p=>p.id==='perm'),k)+' мД':'—');
+  add('Нефтенасыщенность',num(3,1,'%'));
+  if(S.prod){
+    const e=S.prod.by[w.key];
+    add('Добыча, '+monthLabel(S.ti),null,'wh');
+    if(e){
+      const ti=S.ti, oil=e.oil[ti], wc=e.wc[ti], cum=e.cum[ti];
+      add('Дебит нефти',isFinite(oil)?oil.toFixed(1)+' т/сут':'—');
+      add('Обводнённость',isFinite(wc)?wc.toFixed(1)+' %':'—');
+      add('Накоплено',isFinite(cum)?cum.toFixed(1)+' тыс. т':'—');
+    }else add('Нет записей добычи по этой скважине',null,'wn');
+  }
+}
+function selectWell(id){
+  S.sel=id||''; $('wellSel').value=S.sel;
+  renderWellCard(); if(S.opt) render();
+}
+$('wellSel').addEventListener('change',e=>selectWell(e.target.value));
+cv.addEventListener('click',e=>{
+  if(S.fdraw){addFaultVertex(e);return;}
+  if(S.draw){addSecVertex(e);return;}
+  if(!S.ok||!S.geo||!S.grid) return;
+  const r=cv.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top, {ox,oy,sc}=S.geo, g=S.grid;
+  let best=null,bd=Infinity;
+  S.act.forEach(w=>{
+    const sx=ox+(w.x-g.gx0)*sc, sy=oy+(g.gy1-w.y)*sc, d=Math.hypot(sx-x,sy-y);
+    let rad=12; if(S.opt&&S.opt.ov&&S.bub){const it=S.bub.find(i=>i.w===w); if(it&&it.r>0) rad=it.r+4;}
+    if(d<=rad&&d<bd){bd=d;best=w;}
+  });
+  if(best) selectWell(best.id===S.sel?'':best.id);
+});
+$('dataToggle').addEventListener('click',()=>{
+  const box=$('dataBox'), open=box.hidden;
+  box.hidden=!open;
+  $('dataToggle').setAttribute('aria-expanded',open?'true':'false');
+  $('dataChev').textContent=open?'▾':'▸';
+});
+
+/* ---------- залежи и ВНК ---------- */
+const POOLS=[
+  {id:'jr',key:'Jr',name:'Юра',  col:'#8fb3ff'},
+  {id:'tr',key:'Tr',name:'Триас',col:'#e29bb5'}
+];
+function areaTxt(a){const u=$('unit').value.trim(); return u==='м'?(a/1e6).toFixed(2)+' км²':Math.round(a)+' '+(u||'ед.')+'²';}
+function getPools(){
+  if(!S.opt||!S.ext||!$('poolsOn').checked) return [];
+  const gs=secGridSet(); if(!gs) return [];
+  const key=[S.secKey,$('poolJr').checked,$('owcJr').value,$('poolTr').checked,$('owcTr').value].join('#');
+  if(S.poolKey===key&&S.poolVal) return S.poolVal;
+  const out=[];
+  POOLS.forEach(def=>{
+    if(!$('pool'+def.key).checked) return;
+    const h=gs[def.id], owc=parseFloat($('owc'+def.key).value);
+    if(!h||!isFinite(owc)) return;
+    const alt=gs.alt, n=h.z.length, E=new Float32Array(n);
+    let emax=-Infinity, cnt=0;
+    for(let i=0;i<n;i++){
+      const v=(alt?alt.z[i]:0)-h.z[i]; E[i]=v;
+      if(v===v){ if(v>emax) emax=v; if(v>=owc) cnt++; }
+    }
+    if(!isFinite(emax)) return;
+    out.push({def,owc,gE:Object.assign({},h,{z:E}),emax,exists:emax>=owc,height:Math.max(0,emax-owc),area:cnt*h.dx*h.dy});
+  });
+  S.poolKey=key; S.poolVal=out; return out;
+}
+function drawPools(b,k){
+  const {px,py,sc,P}=k, pls=getPools().filter(p=>p.exists); if(!pls.length) return;
+  pls.forEach((pl,pi)=>{
+    const g=pl.gE, c=pl.def.col;
+    if(P.id===pl.def.id){
+      const off=document.createElement('canvas'); off.width=g.nx; off.height=g.ny;
+      const oc=off.getContext('2d'), img=oc.createImageData(g.nx,g.ny);
+      const rr=parseInt(c.slice(1,3),16), gg=parseInt(c.slice(3,5),16), bb=parseInt(c.slice(5,7),16);
+      for(let j=0;j<g.ny;j++)for(let i=0;i<g.nx;i++){
+        const v=g.z[j*g.nx+i], q=((g.ny-1-j)*g.nx+i)*4;
+        if(v===v&&v>=pl.owc){img.data[q]=rr;img.data[q+1]=gg;img.data[q+2]=bb;img.data[q+3]=255;}
+      }
+      oc.putImageData(img,0,0);
+      b.save(); b.globalAlpha=.34; b.imageSmoothingEnabled=true; b.imageSmoothingQuality='high';
+      const cw=g.dx*sc, chh=g.dy*sc;
+      b.drawImage(off,px(g.gx0)-cw/2,py(g.gy1)-chh/2,g.nx*cw,g.ny*chh);
+      b.restore();
+    }
+    const seg=contour(g,pl.owc); if(!seg.length) return;
+    b.lineJoin='round'; b.lineCap='round';
+    b.beginPath(); for(let i=0;i<seg.length;i+=4){b.moveTo(px(seg[i]),py(seg[i+1]));b.lineTo(px(seg[i+2]),py(seg[i+3]));}
+    b.strokeStyle='rgba(8,12,18,.88)'; b.lineWidth=5; b.stroke();
+    b.strokeStyle=c; b.lineWidth=2.4; b.stroke();
+    // подпись у самого длинного участка в середине контура
+    let m=-1, my=Infinity, mAny=0, myAny=Infinity;
+    for(let i=0;i<seg.length;i+=4){
+      const ax=px(seg[i]),ay=py(seg[i+1]),bx=px(seg[i+2]),by=py(seg[i+3]), ym=(ay+by)/2, len=Math.hypot(bx-ax,by-ay)||1;
+      if(ym<myAny){myAny=ym;mAny=i;}
+      if(Math.abs(by-ay)/len<0.35&&ym<my){my=ym;m=i;}
+    }
+    if(m<0) m=mAny;
+    const x1=px(seg[m]),y1=py(seg[m+1]),x2=px(seg[m+2]),y2=py(seg[m+3]);
+    let a=Math.atan2(y2-y1,x2-x1); if(a>Math.PI/2) a-=Math.PI; if(a<-Math.PI/2) a+=Math.PI;
+    b.save(); b.translate((x1+x2)/2,(y1+y2)/2); b.rotate(a);
+    b.font='700 11px '+FONT; b.textAlign='center'; b.textBaseline='middle';
+    halo(b,'ВНК '+pl.def.name+' '+pl.owc.toFixed(0),0,pi?10:-9,'#ffffff','rgba(8,12,18,.92)',3.4);
+    b.restore();
+  });
+}
+
+/* ---------- геологический разрез ---------- */
+const SC=$('sc'), sctx=SC.getContext('2d');
+const SEC={base:null,geo:null,hover:null,data:null,W:600,H:440,dpr:1};
+const SEC_COL={over:'rgba(134,147,164,.10)',kr:'#3d6b5a',jr:'#4a5f8a',sand:'#d9a441',tr:'#7d4e63'};
+const SEC_LINE={kr:'#8fd3b6',jr:'#9bb3e3',z:'#f2c14e',tr:'#e29bb5'};
+const TOPS=[['kr',6,'Кровля мела'],['jr',7,'Кровля юры'],['z',0,'Кровля пласта'],['tr',8,'Кровля триаса']];
+const SEC_CLR='#4dd0e1';
+
+function mapToData(mx,my){const {ox,oy,sc}=S.geo,g=S.grid;return {x:g.gx0+(mx-ox)/sc,y:g.gy1-(my-oy)/sc};}
+function dataToMap(x,y){const {ox,oy,sc}=S.geo,g=S.grid;return {x:ox+(x-g.gx0)*sc,y:oy+(g.gy1-y)*sc};}
+
+function secUI(){
+  const b=$('secDraw');
+  b.textContent=S.draw?'Завершить':'Нарисовать линию';
+  b.classList.toggle('on',S.draw);
+  cv.style.cursor=(S.draw||S.fdraw)?'copy':'';
+  $('secHint').textContent=S.draw
+    ? 'Кликайте по карте: вершины линии (рядом со скважиной вершина привязывается к ней). Двойной клик, Enter или «Завершить» — конец, Backspace — убрать последнюю точку.'
+    : (S.sec.pts.length>=2
+        ? 'Линия разреза задана. Чтобы провести новую, нажмите «Нарисовать линию» снова.'
+        : 'Нажмите «Нарисовать линию» и кликайте по карте: линия может быть ломаной, с любым числом вершин.');
+}
+function updateSection(){ if(S.opt) render(); renderSection(); }
+function startDraw(){
+  if(!S.ok||!S.geo){ $('secHint').textContent='Сначала нужна карта: введите данные скважин.'; return; }
+  if(S.fdraw) finishFaultDraw(true);
+  S.draw=true; S.sec.pts=[]; S.secCur=null; secUI(); updateSection();
+}
+function finishDraw(){
+  if(!S.draw) return;
+  S.draw=false; if(S.sec.pts.length<2) S.sec.pts=[];
+  secUI(); updateSection();
+}
+function addSecVertex(e){
+  if(!S.ok||!S.geo||!S.grid) return;
+  const r=cv.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top, {ox,oy,pw,ph}=S.geo;
+  if(mx<ox||mx>ox+pw||my<oy||my>oy+ph) return;
+  let q=mapToData(mx,my), best=null, bd=14;
+  S.act.forEach(w=>{const p=dataToMap(w.x,w.y), d=Math.hypot(p.x-mx,p.y-my); if(d<bd){bd=d;best=w;}});
+  if(best) q={x:best.x,y:best.y};
+  const last=S.sec.pts[S.sec.pts.length-1];
+  if(last){const a=dataToMap(last.x,last.y), b=dataToMap(q.x,q.y); if(Math.hypot(a.x-b.x,a.y-b.y)<4) return;}
+  S.sec.pts.push(q); updateSection();
+}
+function drawSecLine(b,px,py,sc){
+  const pts=S.sec.pts; if(!pts.length) return;
+  const buf=Math.max(0,+$('secBuf').value||0);
+  const path=()=>{b.beginPath();pts.forEach((p,i)=>{const x=px(p.x),y=py(p.y);i?b.lineTo(x,y):b.moveTo(x,y);});};
+  if(pts.length>=2&&buf>0){path();b.lineJoin='round';b.lineCap='butt';b.strokeStyle='rgba(77,208,225,.12)';b.lineWidth=2*buf*sc;b.stroke();}
+  if(pts.length>=2){
+    path(); b.lineJoin='round'; b.lineCap='round'; b.strokeStyle='rgba(8,12,18,.88)'; b.lineWidth=5; b.stroke();
+    path(); b.strokeStyle=SEC_CLR; b.lineWidth=2.4; b.stroke();
+  }
+  pts.forEach((p,i)=>{
+    const x=px(p.x),y=py(p.y);
+    b.fillStyle=SEC_CLR; b.strokeStyle='rgba(8,12,18,.95)'; b.lineWidth=1.5;
+    b.fillRect(x-3.5,y-3.5,7,7); b.strokeRect(x-3.5,y-3.5,7,7);
+  });
+  b.font='700 12px '+FONT; b.textAlign='left'; b.textBaseline='alphabetic';
+  if(pts.length>=2&&!S.draw){
+    halo(b,'A',px(pts[0].x)+7,py(pts[0].y)-6,'#bdf3fa','rgba(8,12,18,.92)',3.5);
+    const l=pts[pts.length-1]; halo(b,'B',px(l.x)+7,py(l.y)-6,'#bdf3fa','rgba(8,12,18,.92)',3.5);
+  }
+}
+
+function secGridSet(){
+  const G=S.opt; if(!G||!S.ext) return null;
+  const bar=$('faultsOn').checked&&$('fbar').checked&&S.fsegs.length>0;
+  const key=[S.dataVer,S.year,G.method,G.p,G.smooth,G.res,G.mask,bar?1:0,[...S.fOff].sort().join(';')].join('|');
+  if(S.secKey===key&&S.secGrids) return S.secGrids;
+  const res={};
+  [['kr',6],['jr',7],['z',0],['tr',8],['alt',4]].forEach(([id,idx])=>{
+    const pts=S.act.filter(w=>isFinite(w.vals[idx])).map(w=>({x:w.x,y:w.y,name:w.name,raw:w.vals[idx],z:w.vals[idx]}));
+    res[id]=null;
+    if(pts.length>=3){try{res[id]=makeGrid(pts,Object.assign({},G,{barrier:id==='alt'?false:bar}),S.ext);}catch(err){res[id]=null;}}
+  });
+  S.secGrids=res; S.secKey=key; return res;
+}
+function segInter(ax,ay,bx,by,cx,cy,dx,dy){
+  const rx=bx-ax, ry=by-ay, sx=dx-cx, sy=dy-cy, den=rx*sy-ry*sx;
+  if(Math.abs(den)<1e-12) return null;
+  const t=((cx-ax)*sy-(cy-ay)*sx)/den, u=((cx-ax)*ry-(cy-ay)*rx)/den;
+  return (t<0||t>1||u<0||u>1)?null:t;
+}
+function buildSection(){
+  const pts=S.sec.pts; if(pts.length<2||!S.ext||!S.ok) return null;
+  const gs=secGridSet(); if(!gs) return null;
+  const cum=[0]; for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y));
+  const L=cum[cum.length-1]; if(!(L>0)) return null;
+  const at=d=>{let i=1; while(i<cum.length-1&&cum[i]<d) i++; const a=pts[i-1], b=pts[i], seg=(cum[i]-cum[i-1])||1, t=Math.max(0,Math.min(1,(d-cum[i-1])/seg)); return {x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t};};
+  const thk=Math.max(0,+$('secThk').value||0), buf=Math.max(0,+$('secBuf').value||0), altOK=!!gs.alt, N=300;
+  const smp=[];
+  for(let k=0;k<=N;k++){
+    const d=L*k/N, p=at(d), alt=altOK?sampleZ(gs.alt,p.x,p.y):0;
+    const dep=id=>gs[id]?sampleZ(gs[id],p.x,p.y):NaN;
+    const zz=dep('z');
+    smp.push({d,x:p.x,y:p.y,alt,kr:alt-dep('kr'),jr:alt-dep('jr'),z:alt-zz,zb:alt-(zz+thk),tr:alt-dep('tr')});
+  }
+  const fx=[];
+  if($('faultsOn').checked){
+    for(let i=0;i<pts.length-1;i++){
+      const a=pts[i], b=pts[i+1], seg=cum[i+1]-cum[i];
+      for(let q=0,fi=0;q<S.fsegs.length;q+=4,fi++){
+        const t=segInter(a.x,a.y,b.x,b.y,S.fsegs[q],S.fsegs[q+1],S.fsegs[q+2],S.fsegs[q+3]);
+        if(t===null) continue;
+        const d=cum[i]+t*seg, name=S.fnames[fi];
+        if(!fx.some(f=>f.name===name&&Math.abs(f.d-d)<1e-6*L)) fx.push({d,name});
+      }
+    }
+  }
+  const wells=[];
+  S.act.forEach(w=>{
+    let best=null;
+    for(let i=0;i<pts.length-1;i++){
+      const a=pts[i], b=pts[i+1], dx=b.x-a.x, dy=b.y-a.y, L2=dx*dx+dy*dy||1;
+      const t=Math.max(0,Math.min(1,((w.x-a.x)*dx+(w.y-a.y)*dy)/L2));
+      const off=Math.hypot(w.x-(a.x+t*dx),w.y-(a.y+t*dy));
+      if(!best||off<best.off) best={off,s:cum[i]+t*Math.sqrt(L2)};
+    }
+    if(best.off<=buf+1e-9){
+      let wa=w.vals[4]; if(!isFinite(wa)) wa=altOK?sampleZ(gs.alt,w.x,w.y):0;
+      const td=isFinite(w.vals[8])?w.vals[8]+40:(isFinite(w.vals[0])?w.vals[0]+thk+25:(isFinite(w.vals[7])?w.vals[7]+80:NaN));
+      wells.push({w,s:best.s,off:best.off,alt:wa,td});
+    }
+  });
+  wells.sort((a,b)=>a.s-b.s);
+  return {pts,cum,L,smp,fx,wells,thk,buf,altOK,at,N};
+}
+
+function setSecStats(d){
+  const el=$('secStats');
+  if(!d){el.style.display='none';el.textContent='';return;}
+  const u=$('unit').value.trim();
+  el.textContent='Линия: '+d.pts.length+' верш. · длина '+Math.round(d.L)+' '+u+' · скважин в буфере ±'+Math.round(d.buf)+' '+u+': '+d.wells.length+
+    (d.wells.length?' ('+d.wells.map(o=>(o.w.name||'без имени')+(o.off>1?' '+Math.round(o.off):'')).join(', ')+')':'')+
+    (d.fx.length?' · пересечено разломов: '+d.fx.length:'')+(d.altOK?'':' · альтитуды нет: отметки от устья');
+  el.style.display='';
+}
+
+function renderSection(){
+  const W=Math.max(300,Math.floor($('secwrap').clientWidth)||800), dpr=Math.min(2,window.devicePixelRatio||1);
+  SEC.W=W; SEC.dpr=dpr; SEC.hover=null; SEC.data=null;
+  $('secUnit').textContent=$('unit').value.trim();
+  const base=document.createElement('canvas');
+  const C={panel:cssv('--panel'),plot:cssv('--plot'),text:cssv('--text'),muted:cssv('--muted'),b2:cssv('--border2'),grid:cssv('--border'),hl:cssv('--hl')};
+  const d=buildSection();
+  if(!d){
+    SEC.H=170; SEC.geo=null;
+    base.width=W*dpr; base.height=SEC.H*dpr;
+    const c=base.getContext('2d'); c.scale(dpr,dpr);
+    c.fillStyle=C.panel; c.fillRect(0,0,W,SEC.H);
+    c.fillStyle=C.muted; c.font='14px '+FONT; c.textAlign='center'; c.textBaseline='middle';
+    const msg=!S.ok?'Нет карты: введите данные скважин':(S.draw?'Кликайте по карте, чтобы задать линию разреза':(S.sec.pts.length===1?'Нужна ещё хотя бы одна вершина':'Линия разреза не задана: нажмите «Нарисовать линию»'));
+    c.fillText(fitText(c,msg,W-32),W/2,SEC.H/2);
+    SEC.base=base; applySec(); setSecStats(null); return;
+  }
+  const {cum,L,smp,fx,wells,thk,altOK}=d, N=smp.length-1;
+  const narrow=W<560, ml=narrow?52:66, mr=narrow?86:116, mt=narrow?84:72, mb=44, H=narrow?400:460;
+  const ox=ml, oy=mt, pw=W-ml-mr, ph=H-mt-mb;
+  SEC.H=H; base.width=W*dpr; base.height=H*dpr;
+  const b=base.getContext('2d'); b.scale(dpr,dpr);
+  b.fillStyle=C.panel; b.fillRect(0,0,W,H);
+
+  const eA=smp.map(s=>s.alt), eK=smp.map(s=>s.kr), eJ=smp.map(s=>s.jr), eZ=smp.map(s=>s.z), eZb=smp.map(s=>s.zb), eT=smp.map(s=>s.tr);
+  const pls=getPools().filter(p=>p.exists); SEC.pools=pls;
+  let hi=-Infinity, lo=Infinity;
+  const acc=v=>{if(isFinite(v)){if(v>hi)hi=v;if(v<lo)lo=v;}};
+  [eA,eK,eJ,eZ,eT].forEach(a=>a.forEach(acc));
+  pls.forEach(p=>acc(p.owc));
+  wells.forEach(o=>{acc(o.alt); if(isFinite(o.td)&&isFinite(o.alt)) acc(o.alt-o.td);});
+  if(!isFinite(hi)||!isFinite(lo)){
+    SEC.H=170; SEC.geo=null; base.width=W*dpr; base.height=170*dpr;
+    const c=base.getContext('2d'); c.scale(dpr,dpr); c.fillStyle=C.panel; c.fillRect(0,0,W,170);
+    c.fillStyle=C.muted; c.font='14px '+FONT; c.textAlign='center'; c.textBaseline='middle';
+    c.fillText(fitText(c,'Недостаточно данных для разреза (нужно ≥3 скважин с горизонтами)',W-32),W/2,85);
+    SEC.base=base; applySec(); setSecStats(d); return;
+  }
+  const span=(hi-lo)||1; hi+=span*0.14; lo-=span*0.04;
+  const X=dd=>ox+dd/L*pw, Y=e=>oy+(hi-e)/(hi-lo)*ph;
+  SEC.geo={ox,oy,pw,ph,hi,lo,L}; SEC.data=d; SEC.eArr={eA,eK,eJ,eZ,eZb,eT};
+
+  // заголовок и подзаголовок
+  const u=$('unit').value.trim();
+  b.textAlign='left'; b.textBaseline='alphabetic'; b.fillStyle=C.text; b.font='600 15px '+FONT;
+  b.fillText(fitText(b,'Геологический разрез A'+(d.pts.length>2?'–…':'')+'–B',W-28),14,24);
+  b.fillStyle=C.muted; b.font='12px '+FONT;
+  b.fillText(fitText(b,'Длина '+Math.round(L)+' '+u+' · скважин в буфере: '+wells.length+(fx.length?' · разломов на линии: '+fx.length:''),W-28),14,43);
+
+  // легенда
+  const leg=[['Мел',SEC_COL.kr],['Юра',SEC_COL.jr],['Песчаный пласт',SEC_COL.sand],['Триас',SEC_COL.tr]].concat(pls.length?[['Залежь (нефть)',OIL_C]]:[],[['Разлом','#ff6b81'],['Скважина','#f1f4f8']]);
+  b.font='11px '+FONT; b.textBaseline='middle';
+  let lx=14, ly=narrow?60:60;
+  leg.forEach(([name,col])=>{
+    const w=b.measureText(name).width+22;
+    if(lx+w>W-8){lx=14;ly+=16;}
+    b.fillStyle=col; b.fillRect(lx,ly-5,10,10);
+    b.fillStyle=C.text; b.fillText(name,lx+15,ly); lx+=w+10;
+  });
+
+  // поле
+  b.fillStyle=C.plot; b.fillRect(ox,oy,pw,ph);
+  b.save(); b.beginPath(); b.rect(ox,oy,pw,ph); b.clip();
+
+  const fill=(up,low,color)=>{
+    let run=[];
+    const flush=()=>{
+      if(run.length>1){
+        b.beginPath();
+        run.forEach((i,k)=>{const x=X(smp[i].d),y=Y(up[i]);k?b.lineTo(x,y):b.moveTo(x,y);});
+        for(let k=run.length-1;k>=0;k--){const i=run[k];b.lineTo(X(smp[i].d),Y(Math.min(low[i],up[i])));}
+        b.closePath(); b.fillStyle=color; b.fill();
+      }
+      run=[];
+    };
+    for(let i=0;i<=N;i++){ if(isFinite(up[i])&&isFinite(low[i])) run.push(i); else flush(); }
+    flush();
+  };
+  const bottom=smp.map(()=>lo);
+  fill(eA,eK.map((v,i)=>isFinite(v)?v:eA[i]),SEC_COL.over);
+  fill(eK,eJ.map((v,i)=>isFinite(v)?v:bottom[i]),SEC_COL.kr);
+  fill(eJ,eT.map((v,i)=>isFinite(v)?v:bottom[i]),SEC_COL.jr);
+  fill(eT,bottom,SEC_COL.tr);
+  pls.forEach(p=>{const top=p.def.id==='jr'?eJ:eT; fill(top.map(v=>isFinite(v)&&v>p.owc?v:NaN),smp.map(()=>p.owc),'rgba(217,150,47,.62)');});
+  fill(eZ,eZb,SEC_COL.sand);
+
+  // сетка
+  const xs=niceStep(L,narrow?4:7), ys=niceStep(hi-lo,narrow?6:8);
+  b.strokeStyle='rgba(255,255,255,.07)'; b.lineWidth=1; b.beginPath();
+  for(let k=0;k*xs<=L;k++){const x=Math.round(X(k*xs))+.5;b.moveTo(x,oy);b.lineTo(x,oy+ph);}
+  for(let k=Math.ceil(lo/ys);k*ys<=hi;k++){const y=Math.round(Y(k*ys))+.5;b.moveTo(ox,y);b.lineTo(ox+pw,y);}
+  b.stroke();
+
+  const stroke=(arr,color,wid,dash)=>{
+    b.strokeStyle=color; b.lineWidth=wid; b.lineJoin='round'; b.setLineDash(dash||[]);
+    let open=false; b.beginPath();
+    for(let i=0;i<=N;i++){
+      if(!isFinite(arr[i])){open=false;continue;}
+      const x=X(smp[i].d),y=Y(arr[i]);
+      if(open) b.lineTo(x,y); else {b.moveTo(x,y);open=true;}
+    }
+    b.stroke(); b.setLineDash([]);
+  };
+  stroke(eK,SEC_LINE.kr,1.4); stroke(eJ,SEC_LINE.jr,1.4); stroke(eT,SEC_LINE.tr,1.4);
+  stroke(eZ,SEC_LINE.z,1.8);
+  stroke(eA,'#d9dfe7',1.8);   // рельеф
+  pls.forEach(p=>{
+    const y=Math.round(Y(p.owc))+.5;
+    b.strokeStyle='rgba(8,12,18,.8)'; b.lineWidth=3.6; b.setLineDash([]); b.beginPath(); b.moveTo(ox,y); b.lineTo(ox+pw,y); b.stroke();
+    b.strokeStyle=p.def.col; b.lineWidth=1.6; b.setLineDash([8,4]); b.beginPath(); b.moveTo(ox,y); b.lineTo(ox+pw,y); b.stroke(); b.setLineDash([]);
+  });
+
+  // вершины линии разреза
+  b.strokeStyle='rgba(77,208,225,.45)'; b.lineWidth=1; b.setLineDash([2,4]);
+  for(let i=1;i<cum.length-1;i++){const x=Math.round(X(cum[i]))+.5;b.beginPath();b.moveTo(x,oy);b.lineTo(x,oy+ph);b.stroke();}
+  b.setLineDash([]);
+
+  // разломы
+  fx.forEach(f=>{
+    const x=Math.round(X(f.d))+.5;
+    b.strokeStyle='rgba(8,12,18,.85)'; b.lineWidth=4; b.setLineDash([]); b.beginPath(); b.moveTo(x,oy); b.lineTo(x,oy+ph); b.stroke();
+    b.strokeStyle='#ff6b81'; b.lineWidth=1.8; b.setLineDash([7,4]); b.beginPath(); b.moveTo(x,oy); b.lineTo(x,oy+ph); b.stroke(); b.setLineDash([]);
+    b.font='600 11px '+FONT; b.textAlign='left'; b.textBaseline='alphabetic';
+    halo(b,f.name,x+5,oy+14,'#ffc2cb','rgba(8,12,18,.92)',3);
+  });
+
+  // скважины
+  let lastLab=-1e9, row=0;
+  wells.forEach(o=>{
+    const x=X(o.s), wa=o.alt; if(!isFinite(wa)) return;
+    const td=isFinite(o.td)?wa-o.td:lo;
+    b.strokeStyle='rgba(8,12,18,.85)'; b.lineWidth=4; b.beginPath(); b.moveTo(x,Y(wa)); b.lineTo(x,Y(td)); b.stroke();
+    b.strokeStyle='#f1f4f8'; b.lineWidth=1.6; b.beginPath(); b.moveTo(x,Y(wa)); b.lineTo(x,Y(td)); b.stroke();
+    b.fillStyle='#f1f4f8'; b.fillRect(x-3,Y(wa)-3,6,6);
+    TOPS.forEach(([id,idx])=>{
+      const dep=o.w.vals[idx]; if(!isFinite(dep)) return;
+      const y=Y(wa-dep);
+      b.beginPath(); b.arc(x,y,3.2,0,Math.PI*2); b.fillStyle=SEC_LINE[id]; b.fill(); b.lineWidth=1.2; b.strokeStyle='rgba(8,12,18,.95)'; b.stroke();
+    });
+    // подпись с разнесением по высоте
+    row=(x-lastLab<46)?(row+1)%3:0; lastLab=x;
+    b.font='600 11px '+FONT; b.textAlign='center'; b.textBaseline='alphabetic';
+    halo(b,o.w.name||'скв.',Math.max(ox+16,Math.min(ox+pw-16,x)),Y(wa)-8-row*12,'#f1f4f8','rgba(8,12,18,.92)',3);
+  });
+  b.restore();
+
+  // рамка, оси
+  b.strokeStyle=C.b2; b.lineWidth=1; b.strokeRect(ox+.5,oy+.5,pw,ph);
+  b.fillStyle=C.muted; b.font='11.5px '+FONT; b.textBaseline='top'; b.textAlign='center';
+  for(let k=0;k*xs<=L;k++){const x=X(k*xs); b.strokeStyle=C.b2; b.beginPath(); b.moveTo(Math.round(x)+.5,oy+ph); b.lineTo(Math.round(x)+.5,oy+ph+4); b.stroke(); b.fillText(String(Math.round(k*xs)),x,oy+ph+7);}
+  b.textAlign='right'; b.textBaseline='middle';
+  for(let k=Math.ceil(lo/ys);k*ys<=hi;k++){const y=Y(k*ys); b.strokeStyle=C.b2; b.beginPath(); b.moveTo(ox,Math.round(y)+.5); b.lineTo(ox-4,Math.round(y)+.5); b.stroke(); b.fillText(String(Math.round(k*ys)),ox-8,y);}
+  b.textAlign='center'; b.textBaseline='alphabetic'; b.fillStyle=C.text; b.font='500 12px '+FONT;
+  b.fillText('Расстояние по линии, '+(u||''),ox+pw/2,oy+ph+38);
+  b.save(); b.translate(14,oy+ph/2); b.rotate(-Math.PI/2); b.fillText(altOK?'Абсолютная отметка, м':'Отметка от устья, м',0,0); b.restore();
+  b.font='700 12px '+FONT; b.textAlign='left'; b.textBaseline='alphabetic';
+  halo(b,'A',ox+4,oy+ph-6,'#bdf3fa','rgba(8,12,18,.92)',3.5);
+  b.textAlign='right'; halo(b,'B',ox+pw-4,oy+ph-6,'#bdf3fa','rgba(8,12,18,.92)',3.5);
+
+  // подписи горизонтов справа (с разнесением)
+  const labs=[];
+  [['Кровля мела',eK,SEC_LINE.kr],['Кровля юры',eJ,SEC_LINE.jr],['Кровля пласта',eZ,SEC_LINE.z],['Кровля триаса',eT,SEC_LINE.tr],['Рельеф',eA,'#d9dfe7']].forEach(([name,arr,col])=>{
+    for(let i=N;i>=0;i--) if(isFinite(arr[i])){labs.push({name,col,y:Y(arr[i])});break;}
+  });
+  pls.forEach(p=>labs.push({name:'ВНК '+p.def.name+' '+p.owc.toFixed(0),col:p.def.col,y:Y(p.owc)}));
+  labs.sort((a,c)=>a.y-c.y);
+  for(let i=1;i<labs.length;i++) if(labs[i].y-labs[i-1].y<13) labs[i].y=labs[i-1].y+13;
+  b.font='11px '+FONT; b.textAlign='left'; b.textBaseline='middle';
+  labs.forEach(l=>{ b.fillStyle=l.col; b.fillText(fitText(b,l.name,mr-10),ox+pw+7,l.y); });
+
+  SEC.base=base; applySec(); setSecStats(d);
+}
+function applySec(){
+  SC.width=SEC.W*SEC.dpr; SC.height=SEC.H*SEC.dpr; SC.style.height=SEC.H+'px';
+  paintSec();
+}
+function paintSec(){
+  sctx.setTransform(1,0,0,1,0,0); sctx.clearRect(0,0,SC.width,SC.height);
+  if(SEC.base) sctx.drawImage(SEC.base,0,0);
+  if(SEC.hover&&SEC.geo){
+    sctx.setTransform(SEC.dpr,0,0,SEC.dpr,0,0);
+    const {ox,oy,pw,ph}=SEC.geo, h=SEC.hover;
+    sctx.save(); sctx.beginPath(); sctx.rect(ox,oy,pw,ph); sctx.clip();
+    sctx.strokeStyle=cssv('--hl'); sctx.lineWidth=1; sctx.setLineDash([4,3]);
+    sctx.beginPath(); sctx.moveTo(h.x+.5,oy); sctx.lineTo(h.x+.5,oy+ph); sctx.moveTo(ox,h.y+.5); sctx.lineTo(ox+pw,h.y+.5); sctx.stroke();
+    sctx.restore();
+  }
+}
+function layerAt(i,e){
+  const E=SEC.eArr, a=E.eA[i];
+  if(!isFinite(a)) return '—';
+  if(e>a+0.5) return 'выше рельефа';
+  if(isFinite(E.eK[i])&&e>E.eK[i]) return 'выше кровли мела';
+  const inPool=(id,top)=>(SEC.pools||[]).some(p=>p.def.id===id&&isFinite(top)&&top>p.owc&&e>p.owc);
+  if(isFinite(E.eJ[i])&&e>E.eJ[i]) return 'Мел';
+  if(isFinite(E.eZ[i])&&isFinite(E.eZb[i])&&e<=E.eZ[i]&&e>E.eZb[i]) return inPool('jr',E.eJ[i])?'Песчаный пласт · залежь (нефть)':'Песчаный пласт';
+  if(isFinite(E.eT[i])) return e>E.eT[i]?(inPool('jr',E.eJ[i])?'Юра · залежь (нефть)':'Юра'):(inPool('tr',E.eT[i])?'Триас · залежь (нефть)':'Триас');
+  return inPool('jr',E.eJ[i])?'Юра · залежь (нефть)':'Юра';
+}
+function onSecMove(ev){
+  if(!SEC.geo||!SEC.data) return;
+  const r=SC.getBoundingClientRect(), x=ev.clientX-r.left, y=ev.clientY-r.top, {ox,oy,pw,ph,hi,lo,L}=SEC.geo;
+  if(x<ox||x>ox+pw||y<oy||y>oy+ph){clearSecHover();return;}
+  SEC.hover={x,y}; paintSec();
+  const d=(x-ox)/pw*L, e=hi-(y-oy)/ph*(hi-lo), N=SEC.data.smp.length-1, i=Math.max(0,Math.min(N,Math.round(d/L*N)));
+  const u=$('unit').value.trim(), altOK=SEC.data.altOK, a=SEC.eArr.eA[i];
+  let t='S '+Math.round(d)+' '+u+' · отметка '+Math.round(e)+' м'+(isFinite(a)&&altOK?' · глубина от рельефа '+Math.round(a-e)+' м':'')+' · '+layerAt(i,e);
+  let nw=null,nd=Infinity;
+  SEC.data.wells.forEach(o=>{const wx=ox+o.s/L*pw, dd=Math.abs(wx-x); if(dd<12&&dd<nd){nd=dd;nw=o;}});
+  if(nw){
+    const tops=TOPS.map(([id,idx,name])=>isFinite(nw.w.vals[idx])?name.replace('Кровля ','')+' '+nw.w.vals[idx].toFixed(0):null).filter(Boolean).join(', ');
+    t+=' · скв. '+(nw.w.name||'без имени')+(nw.off>1?' (в '+Math.round(nw.off)+' '+u+' от линии)':'')+(tops?': кровли, м — '+tops:'');
+  }
+  $('secRead').textContent=t;
+  const p=SEC.data.at(d); S.secCur={x:p.x,y:p.y}; if(S.geo) paint();
+}
+function clearSecHover(){
+  SEC.hover=null; paintSec(); S.secCur=null; if(S.geo) paint();
+  $('secRead').textContent='Наведите курсор на разрез: расстояние, отметка, слой и скважины';
+}
+SC.addEventListener('pointermove',onSecMove);
+SC.addEventListener('pointerdown',onSecMove);
+SC.addEventListener('pointerleave',clearSecHover);
+SC.addEventListener('pointercancel',clearSecHover);
+
+$('secDraw').addEventListener('click',()=>{S.draw?finishDraw():startDraw();});
+$('secClear').addEventListener('click',()=>{S.draw=false;S.sec.pts=[];S.secCur=null;secUI();updateSection();});
+['secBuf','secThk'].forEach(id=>{const el=$(id),fn=()=>{updateSection();};el.addEventListener('input',fn);el.addEventListener('change',fn);});
+cv.addEventListener('dblclick',e=>{if(S.fdraw){e.preventDefault();finishFaultDraw(false);}else if(S.draw){e.preventDefault();finishDraw();}});
+document.addEventListener('keydown',e=>{
+  if(!S.draw&&!S.fdraw) return;
+  const t=e.target&&e.target.tagName; if(t==='TEXTAREA'||t==='INPUT'||t==='SELECT') return;
+  if(S.fdraw){
+    if(e.key==='Enter'){finishFaultDraw(false);e.preventDefault();}
+    else if(e.key==='Escape'){finishFaultDraw(true);e.preventDefault();}
+    else if(e.key==='Backspace'){S.fdraft.pop();paint();e.preventDefault();}
+    return;
+  }
+  if(e.key==='Enter'||e.key==='Escape'){finishDraw();e.preventDefault();}
+  else if(e.key==='Backspace'){S.sec.pts.pop();updateSection();e.preventDefault();}
+});
+secUI();
+
+/* ---------- рисование разлома ---------- */
+function faultLineName(line){
+  let t;
+  if(/[;\t]/.test(line)) t=line.split(/[;\t]+/).map(x=>x.trim()).filter(Boolean);
+  else{t=line.split(/\s+/).map(x=>x.replace(/,+$/,'')).filter(Boolean); if(t.length<2) t=line.split(/[,\s]+/).filter(Boolean);}
+  return t.slice(2).join(' ')||'Разлом';
+}
+function deleteFault(name){
+  const keep=$('faults').value.split(/\r?\n/).filter(l=>{const x=l.trim(); if(!x||x[0]==='#') return true; return faultLineName(x)!==name;});
+  $('faults').value=keep.join('\n'); S.fOff.delete(name); reload();
+}
+function nextFaultName(){
+  const used=new Set(S.faults.map(f=>f.name));
+  let mx=0; used.forEach(n=>{const m=/^F-?(\d+)$/i.exec(n); if(m) mx=Math.max(mx,+m[1]);});
+  let name='F-'+(mx+1); while(used.has(name)) name+="'";
+  return name;
+}
+function faultUI(){
+  $('fDraw').textContent=S.fdraw?'Завершить разлом':'Нарисовать разлом';
+  $('fDraw').classList.toggle('on',S.fdraw);
+  $('fHint').hidden=!S.fdraw;
+  $('fHint').textContent='Рисуем разлом «'+(S.fname||'')+'»: кликайте по карте — вершины (рядом с вершиной другого разлома вершина прилипает к ней). Двойной клик или Enter — готово, Esc — отмена, Backspace — убрать точку.';
+  cv.style.cursor=(S.draw||S.fdraw)?'copy':'';
+}
+function startFaultDraw(){
+  if(!S.ok||!S.geo){ return; }
+  if(S.draw) finishDraw();
+  S.fdraw=true; S.fdraft=[]; S.fname=nextFaultName();
+  $('faultsOn').checked=true;
+  faultUI(); if(S.opt) render();
+}
+function finishFaultDraw(cancel){
+  if(!S.fdraw) return;
+  const pts=S.fdraft.slice(), name=S.fname;
+  S.fdraw=false; S.fdraft=[]; faultUI();
+  if(cancel||pts.length<2){ if(S.opt) render(); return; }
+  const add=pts.map(p=>(Math.round(p.x*10)/10)+'\t'+(Math.round(p.y*10)/10)+'\t'+name).join('\n');
+  const cur=$('faults').value.replace(/\s+$/,'');
+  $('faults').value=(cur?cur+'\n':'# X\tY\tРазлом\n')+add;
+  reload();
+}
+function addFaultVertex(e){
+  if(!S.ok||!S.geo||!S.grid) return;
+  const r=cv.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top, {ox,oy,pw,ph}=S.geo;
+  if(mx<ox||mx>ox+pw||my<oy||my>oy+ph) return;
+  let q=mapToData(mx,my), bd=10, best=null;
+  S.faults.forEach(f=>f.pts.forEach(p=>{const m=dataToMap(p.x,p.y), d=Math.hypot(m.x-mx,m.y-my); if(d<bd){bd=d;best=p;}}));
+  if(best) q={x:best.x,y:best.y};
+  const last=S.fdraft[S.fdraft.length-1];
+  if(last){const a=dataToMap(last.x,last.y), b=dataToMap(q.x,q.y); if(Math.hypot(a.x-b.x,a.y-b.y)<4) return;}
+  S.fdraft.push(q); paint();
+}
+$('fDraw').addEventListener('click',()=>{S.fdraw?finishFaultDraw(false):startFaultDraw();});
+/* ---------- переключатель показателей ---------- */
+const tabsEl=$('tabs'), horEl=$('horizon');
+const STRUCT=PROPS.filter(P=>P.group==='struct');
+let lastHor=STRUCT[0].id;
+STRUCT.forEach(P=>{const o=document.createElement('option');o.value=P.id;o.textContent=P.label;horEl.appendChild(o);});
+const tabActive=t=>t.dataset.group?(PROP().group===t.dataset.group):(t.dataset.id===cur);
+const seen={};
+PROPS.forEach(P=>{
+  if(P.group){ if(seen[P.group]) return; seen[P.group]=true; }
+  const bt=document.createElement('button');
+  bt.type='button'; bt.className='tab';
+  if(P.group){bt.textContent='Структура'; bt.dataset.group=P.group; bt.addEventListener('click',()=>switchProp(lastHor));}
+  else{bt.textContent=P.label; bt.dataset.id=P.id; bt.addEventListener('click',()=>switchProp(P.id));}
+  tabsEl.appendChild(bt);
+});
+function syncTabs(){
+  const P=PROP();
+  if(P.group==='struct') lastHor=P.id;
+  tabsEl.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-pressed',tabActive(t)?'true':'false'));
+  $('horRow').hidden=P.group!=='struct';
+  if(P.group==='struct') horEl.value=P.id;
+}
+horEl.addEventListener('change',()=>switchProp(horEl.value));
+function switchProp(id){
+  if(id===cur) return;
+  saveCfg(); cur=id; loadCfg();
+  syncTabs();
+  S.hover=null; $('readout').textContent=DEFAULT_READOUT;
+  rebuild();
+}
+syncTabs();
+
+/* ---------- события ---------- */
+let timer=null, timerR=null;
+function scheduleReload(){clearTimeout(timerR);timerR=setTimeout(reload,160);}
+function scheduleRebuild(){clearTimeout(timer);timer=setTimeout(rebuild,140);}
+['data','prod','faults'].forEach(id=>{$(id).addEventListener('input',scheduleReload);});
+['poolsOn','poolJr','poolTr','owcJr','owcTr','faultsOn','fbar','ovOn','bmetric','title','zlab','unit','method','p','smooth','res','interval','mask','ramp','fill','iso','wells','labels','coord','depth']
+  .forEach(id=>{const el=$(id);el.addEventListener('input',scheduleRebuild);el.addEventListener('change',scheduleRebuild);});
+
+function readFileInto(inputEl,targetId){
+  inputEl.addEventListener('change',e=>{
+    const f=e.target.files&&e.target.files[0]; if(!f) return;
+    const rd=new FileReader();
+    rd.onload=()=>{$(targetId).value=String(rd.result);reload();};
+    rd.readAsText(f); e.target.value='';
+  });
+}
+$('yr').addEventListener('input',e=>{
+  S.year=+e.target.value; S.yearAtMax=(S.year>=+e.target.max);
+  rebuildSoon();
+});
+$('fSample').addEventListener('click',()=>{$('faults').value=sampleFaultText();reload();});
+$('fClear').addEventListener('click',()=>{$('faults').value='';reload();});
+$('fFileBtn').addEventListener('click',()=>$('fFile').click());
+readFileInto($('fFile'),'faults');
+$('faultToggle').addEventListener('click',()=>{
+  const box=$('faultBox'), open=box.hidden;
+  box.hidden=!open;
+  $('faultToggle').setAttribute('aria-expanded',open?'true':'false');
+  $('faultChev').textContent=open?'▾':'▸';
+});
+$('bSample').addEventListener('click',()=>{$('data').value=sampleText();reload();});
+$('bClear').addEventListener('click',()=>{$('data').value='';reload();});
+$('bFile').addEventListener('click',()=>$('file').click());
+readFileInto($('file'),'data');
+$('pSample').addEventListener('click',()=>{S.ti=-1;$('prod').value=sampleProdText();reload();});
+$('pClear').addEventListener('click',()=>{stopPlay();$('prod').value='';reload();});
+$('pFileBtn').addEventListener('click',()=>$('pFile').click());
+readFileInto($('pFile'),'prod');
+
+let raf=0,lastW=0;
+if(window.ResizeObserver){
+  new ResizeObserver(()=>{
+    const w=Math.floor($('mapwrap').clientWidth);
+    if(w===lastW) return; lastW=w;
+    cancelAnimationFrame(raf); raf=requestAnimationFrame(()=>{if(S.opt){render();drawTimeline();renderSection();}});
+  }).observe($('mapwrap'));
+  let lastSW=0;
+  new ResizeObserver(()=>{
+    const w=Math.floor($('secwrap').clientWidth);
+    if(w===lastSW) return; lastSW=w;
+    if(S.opt) renderSection();
+  }).observe($('secwrap'));
+}
+
+loadCfg();
+$('data').value=sampleText();
+$('prod').value=sampleProdText();
+$('faults').value=sampleFaultText();
+reload();
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>{if(S.opt){render();drawTimeline();renderSection();}});
+})();
+</script>
+</body>
+</html>
